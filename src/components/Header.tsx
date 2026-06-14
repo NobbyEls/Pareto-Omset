@@ -29,10 +29,10 @@ export function Header({ loading, fetchedAt, onRefresh, children }: HeaderProps)
     <header
       className="sticky top-0 z-30"
       style={{
-        background: "var(--bg-base)",
+        background: "transparent",
         borderBottom: "1px solid var(--border-subtle)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
       }}
     >
       <div className="mx-auto max-w-[1500px] px-4 md:px-8">

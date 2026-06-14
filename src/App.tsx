@@ -7,6 +7,7 @@ import { DataTable } from "./components/DataTable";
 import { YearlyMatrix } from "./components/YearlyMatrix";
 import { BgDecoration } from "./components/BgDecoration";
 import { KotaBreakdown } from "./components/KotaBreakdown";
+import { JasaBreakdown } from "./components/JasaBreakdown";
 import {
   EmptyState,
   ErrorState,
@@ -165,6 +166,8 @@ export default function App() {
               >
                 <KotaBreakdown data={data} year={matrixYear} />
               </SectionCard>
+
+              <JasaBreakdown />
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <SectionCard
