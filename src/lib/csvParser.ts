@@ -96,46 +96,65 @@ interface YearBlock {
   valueCol: number;
 }
 
+const KOTA_HEADER_LABELS = ["cabang", "kode gudang", "kota"];
+const KOTA_CODE_REGEX = /^G-[A-Z]{2,4}$/i;
+
 /**
- * Year blocks are detected by scanning the first row for 4-digit year tokens
- * (e.g. "2024"). The sub-header row is then inspected to decide between the
- * 3-column legacy format (month | dept | value) and the newer 4-column format
- * that adds a kota column (month | kota | dept | value).
+ * Decide whether the CSV uses the 4-column-per-year layout (with kota) or
+ * the legacy 3-column layout (no kota). Two heuristics in order:
+ *   1. Sub-header row labels — "Cabang" / "Kode Gudang" / "Kota" anywhere.
+ *   2. Otherwise scan a handful of data rows for kota codes (G-XXX) in
+ *      the column right after the year — survives the Google Sheets
+ *      "Loading..." transient where sub-header gets blanked out.
  */
-function detectYearBlocks(
-  headerRow: string[],
-  subHeaderRow: string[]
-): YearBlock[] {
-  const blocks: YearBlock[] = [];
-  for (let i = 0; i < headerRow.length; i++) {
-    const cell = (headerRow[i] || "").trim();
-    const m = cell.match(/^(20\d{2})$/);
-    if (!m) continue;
-    const year = Number(m[1]);
-    const nextLabel = (subHeaderRow[i + 1] || "").trim().toLowerCase();
-    const isKotaCol =
-      nextLabel === "cabang" ||
-      nextLabel === "kode gudang" ||
-      nextLabel === "kota";
-    if (isKotaCol) {
-      blocks.push({
-        year,
-        monthCol: i,
-        kotaCol: i + 1,
-        deptCol: i + 2,
-        valueCol: i + 3,
-      });
-    } else {
-      blocks.push({
-        year,
-        monthCol: i,
-        kotaCol: -1,
-        deptCol: i + 1,
-        valueCol: i + 2,
-      });
+function hasKotaLayout(rows: string[][], yearCols: number[]): boolean {
+  const subHeaderRow = rows[1] || [];
+  for (const c of yearCols) {
+    const lbl = String(subHeaderRow[c + 1] || "")
+      .trim()
+      .toLowerCase();
+    if (KOTA_HEADER_LABELS.includes(lbl)) return true;
+  }
+  // Inspect the first ~12 data rows
+  const limit = Math.min(rows.length, 14);
+  for (let r = 1; r < limit; r++) {
+    const row = rows[r];
+    if (!row) continue;
+    for (const c of yearCols) {
+      const val = String(row[c + 1] || "").trim();
+      if (KOTA_CODE_REGEX.test(val)) return true;
     }
   }
-  return blocks;
+  return false;
+}
+
+/**
+ * Year blocks are detected by scanning the first row for 4-digit year tokens
+ * (e.g. "2024"). The layout (3-col vs 4-col) is detected once for the whole
+ * file so that a transient "Loading..." sub-header in one year doesn't
+ * silently demote that year to a no-kota fallback.
+ */
+function detectYearBlocks(rows: string[][]): YearBlock[] {
+  const headerRow = rows[0] || [];
+  const yearCols: { col: number; year: number }[] = [];
+  for (let i = 0; i < headerRow.length; i++) {
+    const cell = String(headerRow[i] || "").trim();
+    const m = cell.match(/^(20\d{2})$/);
+    if (m) yearCols.push({ col: i, year: Number(m[1]) });
+  }
+  if (yearCols.length === 0) return [];
+
+  const fourCol = hasKotaLayout(
+    rows,
+    yearCols.map((y) => y.col)
+  );
+  return yearCols.map((y) => ({
+    year: y.year,
+    monthCol: y.col,
+    kotaCol: fourCol ? y.col + 1 : -1,
+    deptCol: fourCol ? y.col + 2 : y.col + 1,
+    valueCol: fourCol ? y.col + 3 : y.col + 2,
+  }));
 }
 
 export function parseCSV(text: string): ParsedDataset {
@@ -151,7 +170,7 @@ export function parseCSV(text: string): ParsedDataset {
     };
   }
 
-  const blocks = detectYearBlocks(rows[0] || [], rows[1] || []);
+  const blocks = detectYearBlocks(rows);
   const records: SalesRecord[] = [];
   const pivot: ParsedDataset["pivot"] = {};
   const pivotKota: ParsedDataset["pivotKota"] = {};
