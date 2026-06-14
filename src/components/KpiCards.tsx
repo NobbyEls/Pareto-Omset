@@ -110,7 +110,6 @@ export function KpiCards({
   const deptTotals: Record<Department, number> = {
     NB: 0,
     PC: 0,
-    "JASA SERVICE": 0,
     JASA: 0,
   };
   for (let i = 0; i < 12; i++) {

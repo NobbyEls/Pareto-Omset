@@ -5,6 +5,7 @@ import { KpiCards } from "./components/KpiCards";
 import { SectionCard } from "./components/SectionCard";
 import { DataTable } from "./components/DataTable";
 import { CsvUrlInput } from "./components/CsvUrlInput";
+import { YearlyMatrix } from "./components/YearlyMatrix";
 import {
   EmptyState,
   ErrorState,
@@ -104,6 +105,13 @@ export default function App() {
               primaryYear={primaryYear}
               selectedDepartments={selectedDepartments}
             />
+
+            <SectionCard
+              title={`Matriks Bulanan ${primaryYear}`}
+              description="Omset, MoM (Month-over-Month) & YoY (Year-over-Year) per departemen + total — klik chip tahun di atas untuk mengganti tahun"
+            >
+              <YearlyMatrix data={data} year={primaryYear} />
+            </SectionCard>
 
             <div className="grid gap-5 xl:grid-cols-3">
               <SectionCard

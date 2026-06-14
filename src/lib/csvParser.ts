@@ -3,12 +3,25 @@ import { MONTH_INDEX, MONTHS_ID, parseIDNumber } from "./format";
 
 /**
  * Department categories that we recognize in the source sheet.
+ * "JASA SERVICE" is treated as part of "JASA" — see {@link CATEGORY_ALIAS}.
  * "Grand Total" is excluded from charts (it's a derived total) but kept available.
  */
-export const DEPARTMENTS = ["NB", "PC", "JASA SERVICE", "JASA"] as const;
+export const DEPARTMENTS = ["NB", "PC", "JASA"] as const;
 export type Department = (typeof DEPARTMENTS)[number];
 export const ALL_CATEGORIES = [...DEPARTMENTS, "Grand Total"] as const;
 export type Category = (typeof ALL_CATEGORIES)[number];
+
+/**
+ * Source-sheet labels that should be folded into a canonical category.
+ *  - "JASA SERVICE" is summed into "JASA" per business request.
+ */
+const CATEGORY_ALIAS: Record<string, Category> = {
+  NB: "NB",
+  PC: "PC",
+  JASA: "JASA",
+  "JASA SERVICE": "JASA",
+  "GRAND TOTAL": "Grand Total",
+};
 
 export interface SalesRecord {
   year: number;
@@ -25,17 +38,10 @@ export interface ParsedDataset {
   pivot: Record<number, Record<number, Partial<Record<Category, number>>>>;
 }
 
-const KNOWN_CATEGORIES: ReadonlySet<string> = new Set(
-  ALL_CATEGORIES.map((c) => c.toUpperCase())
-);
-
 function normalizeCategory(raw: string | null | undefined): Category | null {
   if (!raw) return null;
   const u = raw.trim().toUpperCase();
-  if (!KNOWN_CATEGORIES.has(u)) return null;
-  // Map back to canonical casing from ALL_CATEGORIES.
-  for (const c of ALL_CATEGORIES) if (c.toUpperCase() === u) return c;
-  return null;
+  return CATEGORY_ALIAS[u] ?? null;
 }
 
 function normalizeMonth(raw: string | null | undefined): number | null {
@@ -107,18 +113,24 @@ export function parseCSV(text: string): ParsedDataset {
 
       if (monthIdx == null || cat == null || value == null) continue;
 
-      const rec: SalesRecord = {
+      records.push({
         year: block.year,
         monthIndex: monthIdx,
         monthName: MONTHS_ID[monthIdx],
         category: cat,
         value,
-      };
-      records.push(rec);
+      });
 
       if (!pivot[block.year]) pivot[block.year] = {};
       if (!pivot[block.year][monthIdx]) pivot[block.year][monthIdx] = {};
-      pivot[block.year][monthIdx][cat] = value;
+      const cell = pivot[block.year][monthIdx];
+      // Accumulate when multiple raw labels alias to the same canonical
+      // category (e.g. JASA + JASA SERVICE).
+      if (cat === "Grand Total") {
+        cell[cat] = value; // last wins; sheet only emits one Grand Total row
+      } else {
+        cell[cat] = (cell[cat] ?? 0) + value;
+      }
     }
   }
 
@@ -129,7 +141,7 @@ export function parseCSV(text: string): ParsedDataset {
 /**
  * Computed Grand Total for a given year+month.
  * Falls back to the explicit "Grand Total" row if present, otherwise
- * sums the four department buckets.
+ * sums the canonical department buckets.
  */
 export function totalFor(
   pivot: ParsedDataset["pivot"],
@@ -159,6 +171,22 @@ export function totalForYear(
   for (let i = 0; i < 12; i++) {
     const v = totalFor(pivot, year, i);
     if (v != null) sum += v;
+  }
+  return sum;
+}
+
+/**
+ * Total for a year per department (canonical, post-merge).
+ */
+export function deptTotalForYear(
+  pivot: ParsedDataset["pivot"],
+  year: number,
+  dept: Department
+): number {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const v = pivot[year]?.[i]?.[dept];
+    if (typeof v === "number") sum += v;
   }
   return sum;
 }

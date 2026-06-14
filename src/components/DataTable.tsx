@@ -20,14 +20,13 @@ interface Row {
   month: string;
   NB: number | null;
   PC: number | null;
-  "JASA SERVICE": number | null;
   JASA: number | null;
   total: number | null;
 }
 
 type SortKey = keyof Pick<
   Row,
-  "year" | "monthIdx" | "NB" | "PC" | "JASA SERVICE" | "JASA" | "total"
+  "year" | "monthIdx" | "NB" | "PC" | "JASA" | "total"
 >;
 
 export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
@@ -51,8 +50,6 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
           month: MONTHS_ID[i],
           NB: typeof m.NB === "number" ? m.NB : null,
           PC: typeof m.PC === "number" ? m.PC : null,
-          "JASA SERVICE":
-            typeof m["JASA SERVICE"] === "number" ? m["JASA SERVICE"] : null,
           JASA: typeof m.JASA === "number" ? m.JASA : null,
           total: totalFor(data.pivot, y, i),
         };
@@ -68,8 +65,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
     if (q) {
       r = r.filter(
         (row) =>
-          String(row.year).includes(q) ||
-          row.month.toLowerCase().includes(q)
+          String(row.year).includes(q) || row.month.toLowerCase().includes(q)
       );
     }
     const sorted = [...r].sort((a, b) => {
@@ -92,7 +88,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
   };
 
   const downloadCSV = () => {
-    const headers = ["Tahun", "Bulan", "NB", "PC", "JASA SERVICE", "JASA", "Total"];
+    const headers = ["Tahun", "Bulan", "NB", "PC", "JASA", "Total"];
     const lines = [headers.join(",")];
     for (const r of filtered) {
       lines.push(
@@ -101,7 +97,6 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
           r.month,
           r.NB ?? "",
           r.PC ?? "",
-          r["JASA SERVICE"] ?? "",
           r.JASA ?? "",
           r.total ?? "",
         ].join(",")
@@ -118,7 +113,15 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
     URL.revokeObjectURL(url);
   };
 
-  const Th = ({ k, label, align = "right" }: { k: SortKey; label: string; align?: "left" | "right" }) => (
+  const Th = ({
+    k,
+    label,
+    align = "right",
+  }: {
+    k: SortKey;
+    label: string;
+    align?: "left" | "right";
+  }) => (
     <th
       onClick={() => onSort(k)}
       className={classNames(
@@ -126,10 +129,12 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
         align === "right" ? "text-right" : "text-left"
       )}
     >
-      <span className={classNames(
-        "inline-flex items-center gap-1",
-        align === "right" && "flex-row-reverse"
-      )}>
+      <span
+        className={classNames(
+          "inline-flex items-center gap-1",
+          align === "right" && "flex-row-reverse"
+        )}
+      >
         {label}
         <ArrowUpDown
           className={classNames(
@@ -176,9 +181,6 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
               <Th k="monthIdx" label="Bulan" align="left" />
               {visibleDepts.includes("NB") && <Th k="NB" label="NB" />}
               {visibleDepts.includes("PC") && <Th k="PC" label="PC" />}
-              {visibleDepts.includes("JASA SERVICE") && (
-                <Th k="JASA SERVICE" label="JASA Service" />
-              )}
               {visibleDepts.includes("JASA") && <Th k="JASA" label="JASA" />}
               <Th k="total" label="Grand Total" />
             </tr>
@@ -209,13 +211,6 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
                 {visibleDepts.includes("PC") && (
                   <td className="px-3 py-2 text-right text-sm tabular-nums">
                     {r.PC == null ? "—" : formatIDR(r.PC)}
-                  </td>
-                )}
-                {visibleDepts.includes("JASA SERVICE") && (
-                  <td className="px-3 py-2 text-right text-sm tabular-nums">
-                    {r["JASA SERVICE"] == null
-                      ? "—"
-                      : formatIDR(r["JASA SERVICE"])}
                   </td>
                 )}
                 {visibleDepts.includes("JASA") && (

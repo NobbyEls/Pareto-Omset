@@ -31,7 +31,6 @@ export function useTheme() {
 export const CHART_COLORS = {
   NB: "#28b955",
   PC: "#0ea5e9",
-  "JASA SERVICE": "#a855f7",
   JASA: "#f59e0b",
   "Grand Total": "#94a3b8",
 } as const;
