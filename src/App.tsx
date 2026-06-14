@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "./components/Header";
-import { Filters } from "./components/Filters";
+import { Filters, type DeptFilter, type KotaFilter } from "./components/Filters";
 import { KpiCards } from "./components/KpiCards";
 import { SectionCard } from "./components/SectionCard";
 import { DataTable } from "./components/DataTable";
 import { YearlyMatrix } from "./components/YearlyMatrix";
 import { BgDecoration } from "./components/BgDecoration";
+import { KotaBreakdown } from "./components/KotaBreakdown";
 import {
   EmptyState,
   ErrorState,
@@ -17,15 +18,20 @@ import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
 import { YoYChart } from "./components/charts/YoYChart";
 import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
 import { useDataset } from "./lib/dataset";
-import { DEPARTMENTS, type Department } from "./lib/csvParser";
+import {
+  DEPARTMENTS,
+  KOTA_NAMES,
+  pivotForKota,
+  type Department,
+  type ParsedDataset,
+} from "./lib/csvParser";
 
 export default function App() {
   const { data, loading, error, fetchedAt, refresh } = useDataset();
 
   const [primaryYear, setPrimaryYear] = useState<number | null>(null);
-  const [selectedDepartments, setSelectedDepartments] = useState<Department[]>([
-    ...DEPARTMENTS,
-  ]);
+  const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
+  const [selectedDept, setSelectedDept] = useState<DeptFilter>("all");
 
   useEffect(() => {
     if (!data) return;
@@ -43,23 +49,45 @@ export default function App() {
   const ready = hasData && primaryYear != null;
 
   /**
-   * Tahun yang dipakai chart Tren: tahun aktif + tahun sebelumnya (kalau ada
-   * di data) supaya overlay YoY tetap muncul. Filter chip menentukan tahun
-   * fokus, bukan membatasi grafik perbandingan.
+   * View dataset: same shape as `data`, but `pivot` reflects the kota filter.
+   * All chart / matrix components consume `viewData.pivot` so a single switch
+   * here flows through the entire dashboard.
    */
+  const viewData: ParsedDataset | null = useMemo(() => {
+    if (!data) return null;
+    return { ...data, pivot: pivotForKota(data, selectedKota) };
+  }, [data, selectedKota]);
+
+  /** Department list to feed downstream charts/matrices. */
+  const visibleDepartments: Department[] = useMemo(
+    () => (selectedDept === "all" ? [...DEPARTMENTS] : [selectedDept]),
+    [selectedDept]
+  );
+
+  /** Trend chart compares primaryYear vs primaryYear-1 if available. */
   const trendYears = useMemo(() => {
-    if (!ready || !data || primaryYear == null) return [];
-    const cur = primaryYear;
+    if (!ready || !viewData || primaryYear == null) return [];
     const prev = primaryYear - 1;
-    const out = [cur];
-    if (data.years.includes(prev)) out.unshift(prev);
+    const out = [primaryYear];
+    if (viewData.years.includes(prev)) out.unshift(prev);
     return out;
-  }, [ready, data, primaryYear]);
+  }, [ready, viewData, primaryYear]);
 
   const yoyAvailable = useMemo(
-    () => ready && data!.years.includes((primaryYear as number) - 1),
-    [ready, data, primaryYear]
+    () => ready && viewData!.years.includes((primaryYear as number) - 1),
+    [ready, viewData, primaryYear]
   );
+
+  const handleReset = () => {
+    if (data && data.years.length > 0) {
+      setPrimaryYear(data.years[data.years.length - 1]);
+    }
+    setSelectedKota("all");
+    setSelectedDept("all");
+  };
+
+  const kotaLabel =
+    selectedKota === "all" ? "Semua Kota" : KOTA_NAMES[selectedKota];
 
   return (
     <div className="relative min-h-screen">
@@ -88,25 +116,28 @@ export default function App() {
             <EmptyState />
           )}
 
-          {ready && data && primaryYear != null && (
+          {ready && viewData && data && primaryYear != null && (
             <>
               <Filters
                 years={data.years}
-                primaryYear={primaryYear}
-                onPrimaryYearChange={setPrimaryYear}
-                departments={[...DEPARTMENTS]}
-                selectedDepartments={selectedDepartments}
-                onDepartmentsChange={setSelectedDepartments}
+                kotas={data.kotas}
+                selectedYear={primaryYear}
+                onYearChange={setPrimaryYear}
+                selectedKota={selectedKota}
+                onKotaChange={setSelectedKota}
+                selectedDept={selectedDept}
+                onDeptChange={setSelectedDept}
+                onReset={handleReset}
               />
 
               <KpiCards
-                data={data}
+                data={viewData}
                 primaryYear={primaryYear}
-                selectedDepartments={selectedDepartments}
+                selectedDepartments={visibleDepartments}
               />
 
               <SectionCard
-                title="Tren Bulanan"
+                title={`Tren Bulanan • ${kotaLabel}`}
                 description={
                   trendYears.length > 1
                     ? `Total omset per bulan • ${primaryYear} vs ${primaryYear - 1}`
@@ -115,76 +146,84 @@ export default function App() {
                 tag={{ label: "YoY · Trend", tone: "blue" }}
               >
                 <MonthlyTrendChart
-                  data={data}
+                  data={viewData}
                   selectedYears={trendYears}
-                  selectedDepartments={selectedDepartments}
+                  selectedDepartments={visibleDepartments}
                 />
               </SectionCard>
 
               <SectionCard
-                title={`Matriks Bulanan ${primaryYear}`}
+                title={`Matriks Bulanan ${primaryYear} • ${kotaLabel}`}
                 description="Omset, MoM (Month-over-Month) & YoY (Year-over-Year) per departemen + total. MoM bulan Januari dihitung dari Desember tahun sebelumnya."
                 tag={{ label: "Tahunan · Pivot", tone: "purple" }}
               >
-                <YearlyMatrix data={data} year={primaryYear} />
+                <YearlyMatrix data={viewData} year={primaryYear} />
+              </SectionCard>
+
+              <SectionCard
+                title={`Performa per Kota • ${primaryYear}`}
+                description="Total omset per cabang dengan share kontribusi dan YoY. Klik header untuk mengurutkan."
+                tag={{ label: "Kota · Breakdown", tone: "amber" }}
+              >
+                <KotaBreakdown data={data} year={primaryYear} />
               </SectionCard>
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <SectionCard
                   title="Komposisi Departemen"
-                  description={`Distribusi omset ${primaryYear} per departemen`}
+                  description={`Distribusi omset ${primaryYear} per departemen • ${kotaLabel}`}
                   tag={{ label: "Mix", tone: "pink" }}
                 >
                   <DepartmentDonut
-                    data={data}
+                    data={viewData}
                     primaryYear={primaryYear}
-                    selectedDepartments={selectedDepartments}
+                    selectedDepartments={visibleDepartments}
                   />
                 </SectionCard>
 
                 <SectionCard
                   title="Stacked Bulanan per Departemen"
-                  description={`Kontribusi tiap departemen tiap bulan • ${primaryYear}`}
+                  description={`Kontribusi tiap departemen tiap bulan • ${kotaLabel}`}
                   tag={{ label: "Stack", tone: "cyan" }}
                 >
                   <DepartmentStackedBar
-                    data={data}
+                    data={viewData}
                     primaryYear={primaryYear}
-                    selectedDepartments={selectedDepartments}
+                    selectedDepartments={visibleDepartments}
                   />
                 </SectionCard>
               </div>
 
               <SectionCard
                 title="Performa Departemen"
-                description={`Tren bulanan setiap departemen di ${primaryYear}`}
+                description={`Tren bulanan setiap departemen di ${primaryYear} • ${kotaLabel}`}
                 tag={{ label: "Lines", tone: "purple" }}
               >
                 <DepartmentDeepDive
-                  data={data}
+                  data={viewData}
                   primaryYear={primaryYear}
-                  selectedDepartments={selectedDepartments}
+                  selectedDepartments={visibleDepartments}
                 />
               </SectionCard>
 
               {yoyAvailable && (
                 <SectionCard
                   title={`Year-over-Year • ${primaryYear} vs ${primaryYear - 1}`}
-                  description="Bandingkan omset bulanan dan persentase pertumbuhan tahunan"
+                  description={`Bandingkan omset bulanan dan persentase pertumbuhan tahunan • ${kotaLabel}`}
                   tag={{ label: "YoY · Growth", tone: "green" }}
                 >
                   <YoYChart
-                    data={data}
+                    data={viewData}
                     primaryYear={primaryYear}
-                    selectedDepartments={selectedDepartments}
+                    selectedDepartments={visibleDepartments}
                   />
                 </SectionCard>
               )}
 
               <DataTable
-                data={data}
+                data={viewData}
                 selectedYears={[primaryYear]}
-                selectedDepartments={selectedDepartments}
+                selectedDepartments={visibleDepartments}
               />
 
               <footer

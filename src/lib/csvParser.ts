@@ -2,9 +2,8 @@ import Papa from "papaparse";
 import { MONTH_INDEX, MONTHS_ID, parseIDNumber } from "./format";
 
 /**
- * Department categories that we recognize in the source sheet.
- * "JASA SERVICE" is treated as part of "JASA" — see {@link CATEGORY_ALIAS}.
- * "Grand Total" is excluded from charts (it's a derived total) but kept available.
+ * Department categories.  Source rows labelled "JASA SERVICE" are folded
+ * into "JASA" via {@link CATEGORY_ALIAS}.
  */
 export const DEPARTMENTS = ["NB", "PC", "JASA"] as const;
 export type Department = (typeof DEPARTMENTS)[number];
@@ -12,9 +11,32 @@ export const ALL_CATEGORIES = [...DEPARTMENTS, "Grand Total"] as const;
 export type Category = (typeof ALL_CATEGORIES)[number];
 
 /**
- * Source-sheet labels that should be folded into a canonical category.
- *  - "JASA SERVICE" is summed into "JASA" per business request.
+ * Branch / kota codes from the source sheet (G-XXX format).
  */
+export const KOTA_CODES = [
+  "G-YGY",
+  "G-SLO",
+  "G-PWT",
+  "G-BBS",
+  "G-TGL",
+  "G-MDN",
+  "G-SMG",
+] as const;
+export type KotaCode = (typeof KOTA_CODES)[number];
+
+/** Human-readable names for each branch code. */
+export const KOTA_NAMES: Record<KotaCode, string> = {
+  "G-YGY": "Yogyakarta",
+  "G-SLO": "Solo",
+  "G-PWT": "Purwokerto",
+  "G-BBS": "Babarsari",
+  "G-TGL": "Tegal",
+  "G-MDN": "Madiun",
+  "G-SMG": "Semarang",
+};
+
+const KOTA_SET: Set<string> = new Set(KOTA_CODES);
+
 const CATEGORY_ALIAS: Record<string, Category> = {
   NB: "NB",
   PC: "PC",
@@ -26,16 +48,24 @@ const CATEGORY_ALIAS: Record<string, Category> = {
 export interface SalesRecord {
   year: number;
   monthIndex: number; // 0..11
-  monthName: string; // "Januari".."Desember"
+  monthName: string;
   category: Category;
+  kota: KotaCode | null;
   value: number;
 }
 
 export interface ParsedDataset {
   records: SalesRecord[];
   years: number[];
-  /** Map year -> month -> category -> value */
+  /** Map year -> month -> category -> aggregated value (across all kota). */
   pivot: Record<number, Record<number, Partial<Record<Category, number>>>>;
+  /** Map year -> month -> kota -> category -> value. */
+  pivotKota: Record<
+    number,
+    Record<number, Partial<Record<KotaCode, Partial<Record<Category, number>>>>>
+  >;
+  /** Branch codes that actually appear in the data, in canonical order. */
+  kotas: KotaCode[];
 }
 
 function normalizeCategory(raw: string | null | undefined): Category | null {
@@ -50,32 +80,56 @@ function normalizeMonth(raw: string | null | undefined): number | null {
   return idx == null ? null : idx;
 }
 
-/**
- * Detects which columns represent {month, dept, value} for each year.
- * Strategy: scan the first row for 4-digit year tokens; for every year found,
- * the next 3 columns (or the column index where the year sits + 0/1/2)
- * are treated as a year-block.
- *
- * The published sheet uses an "empty separator" column between groups,
- * so we don't assume a fixed stride — we trust whatever the header row says.
- */
+function normalizeKota(raw: string | null | undefined): KotaCode | null {
+  if (!raw) return null;
+  const u = raw.trim().toUpperCase();
+  if (KOTA_SET.has(u)) return u as KotaCode;
+  return null;
+}
+
 interface YearBlock {
   year: number;
   monthCol: number;
+  /** -1 when the source has no kota/cabang column (legacy 3-col format). */
+  kotaCol: number;
   deptCol: number;
   valueCol: number;
 }
 
-function detectYearBlocks(headerRow: string[]): YearBlock[] {
+/**
+ * Year blocks are detected by scanning the first row for 4-digit year tokens
+ * (e.g. "2024"). The sub-header row is then inspected to decide between the
+ * 3-column legacy format (month | dept | value) and the newer 4-column format
+ * that adds a kota column (month | kota | dept | value).
+ */
+function detectYearBlocks(
+  headerRow: string[],
+  subHeaderRow: string[]
+): YearBlock[] {
   const blocks: YearBlock[] = [];
   for (let i = 0; i < headerRow.length; i++) {
     const cell = (headerRow[i] || "").trim();
     const m = cell.match(/^(20\d{2})$/);
-    if (m) {
-      const year = Number(m[1]);
+    if (!m) continue;
+    const year = Number(m[1]);
+    const nextLabel = (subHeaderRow[i + 1] || "").trim().toLowerCase();
+    const isKotaCol =
+      nextLabel === "cabang" ||
+      nextLabel === "kode gudang" ||
+      nextLabel === "kota";
+    if (isKotaCol) {
       blocks.push({
         year,
         monthCol: i,
+        kotaCol: i + 1,
+        deptCol: i + 2,
+        valueCol: i + 3,
+      });
+    } else {
+      blocks.push({
+        year,
+        monthCol: i,
+        kotaCol: -1,
         deptCol: i + 1,
         valueCol: i + 2,
       });
@@ -85,64 +139,80 @@ function detectYearBlocks(headerRow: string[]): YearBlock[] {
 }
 
 export function parseCSV(text: string): ParsedDataset {
-  const res = Papa.parse<string[]>(text, {
-    skipEmptyLines: false,
-  });
-
+  const res = Papa.parse<string[]>(text, { skipEmptyLines: false });
   const rows = (res.data || []) as string[][];
   if (!rows.length) {
-    return { records: [], years: [], pivot: {} };
+    return {
+      records: [],
+      years: [],
+      pivot: {},
+      pivotKota: {},
+      kotas: [],
+    };
   }
 
-  const blocks = detectYearBlocks(rows[0] || []);
+  const blocks = detectYearBlocks(rows[0] || [], rows[1] || []);
   const records: SalesRecord[] = [];
   const pivot: ParsedDataset["pivot"] = {};
+  const pivotKota: ParsedDataset["pivotKota"] = {};
+  const kotaSeen = new Set<KotaCode>();
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
     if (!row) continue;
 
     for (const block of blocks) {
-      const monthRaw = row[block.monthCol];
-      const deptRaw = row[block.deptCol];
-      const valueRaw = row[block.valueCol];
-
-      const monthIdx = normalizeMonth(monthRaw);
-      const cat = normalizeCategory(deptRaw);
-      const value = parseIDNumber(valueRaw);
-
+      const monthIdx = normalizeMonth(row[block.monthCol]);
+      const cat = normalizeCategory(row[block.deptCol]);
+      const value = parseIDNumber(row[block.valueCol]);
       if (monthIdx == null || cat == null || value == null) continue;
+
+      const kota =
+        block.kotaCol >= 0 ? normalizeKota(row[block.kotaCol]) : null;
+
+      // For 4-col rows the kota column must resolve to a known branch.
+      // Anything else (e.g. "G-PWT Total", "PURWOKERTO Total", "Grand Total")
+      // is a subtotal row and should be skipped to avoid double-counting.
+      if (block.kotaCol >= 0 && kota == null) continue;
+      // Grand Total rows for legacy 3-col format are skipped here too —
+      // we always re-derive totals from the dept buckets.
+      if (cat === "Grand Total") continue;
 
       records.push({
         year: block.year,
         monthIndex: monthIdx,
         monthName: MONTHS_ID[monthIdx],
         category: cat,
+        kota,
         value,
       });
+
+      if (kota) kotaSeen.add(kota);
 
       if (!pivot[block.year]) pivot[block.year] = {};
       if (!pivot[block.year][monthIdx]) pivot[block.year][monthIdx] = {};
       const cell = pivot[block.year][monthIdx];
-      // Accumulate when multiple raw labels alias to the same canonical
-      // category (e.g. JASA + JASA SERVICE).
-      if (cat === "Grand Total") {
-        cell[cat] = value; // last wins; sheet only emits one Grand Total row
-      } else {
-        cell[cat] = (cell[cat] ?? 0) + value;
+      cell[cat] = (cell[cat] ?? 0) + value;
+
+      if (kota) {
+        if (!pivotKota[block.year]) pivotKota[block.year] = {};
+        if (!pivotKota[block.year][monthIdx])
+          pivotKota[block.year][monthIdx] = {};
+        if (!pivotKota[block.year][monthIdx][kota])
+          pivotKota[block.year][monthIdx][kota] = {};
+        const kc = pivotKota[block.year][monthIdx][kota]!;
+        kc[cat] = (kc[cat] ?? 0) + value;
       }
     }
   }
 
   const years = blocks.map((b) => b.year).sort((a, b) => a - b);
-  return { records, years, pivot };
+  const kotas = KOTA_CODES.filter((k) => kotaSeen.has(k));
+  return { records, years, pivot, pivotKota, kotas };
 }
 
-/**
- * Computed Grand Total for a given year+month.
- * Falls back to the explicit "Grand Total" row if present, otherwise
- * sums the canonical department buckets.
- */
+/* ===== Aggregate helpers (work on `pivot`) ===== */
+
 export function totalFor(
   pivot: ParsedDataset["pivot"],
   year: number,
@@ -150,7 +220,6 @@ export function totalFor(
 ): number | null {
   const m = pivot[year]?.[monthIndex];
   if (!m) return null;
-  if (typeof m["Grand Total"] === "number") return m["Grand Total"]!;
   let sum = 0;
   let any = false;
   for (const d of DEPARTMENTS) {
@@ -175,9 +244,6 @@ export function totalForYear(
   return sum;
 }
 
-/**
- * Total for a year per department (canonical, post-merge).
- */
 export function deptTotalForYear(
   pivot: ParsedDataset["pivot"],
   year: number,
@@ -189,4 +255,72 @@ export function deptTotalForYear(
     if (typeof v === "number") sum += v;
   }
   return sum;
+}
+
+/* ===== Per-kota helpers ===== */
+
+export function kotaMonthValue(
+  pivotKota: ParsedDataset["pivotKota"],
+  year: number,
+  monthIndex: number,
+  kota: KotaCode,
+  dept?: Department
+): number | null {
+  const cell = pivotKota[year]?.[monthIndex]?.[kota];
+  if (!cell) return null;
+  if (dept) {
+    return typeof cell[dept] === "number" ? cell[dept]! : null;
+  }
+  let sum = 0;
+  let any = false;
+  for (const d of DEPARTMENTS) {
+    const v = cell[d];
+    if (typeof v === "number") {
+      sum += v;
+      any = true;
+    }
+  }
+  return any ? sum : null;
+}
+
+export function kotaTotalForYear(
+  pivotKota: ParsedDataset["pivotKota"],
+  year: number,
+  kota: KotaCode,
+  dept?: Department
+): number {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const v = kotaMonthValue(pivotKota, year, i, kota, dept);
+    if (v != null) sum += v;
+  }
+  return sum;
+}
+
+/**
+ * Project the per-kota cube down to a single-kota pivot. When `kota` is
+ * `"all"`, returns the pre-aggregated `pivot` directly.
+ *
+ * The result has the exact same shape as `ParsedDataset.pivot`, so every
+ * existing chart / table component can stay as-is.
+ */
+export function pivotForKota(
+  data: ParsedDataset,
+  kota: KotaCode | "all"
+): ParsedDataset["pivot"] {
+  if (kota === "all") return data.pivot;
+  const out: ParsedDataset["pivot"] = {};
+  for (const yStr of Object.keys(data.pivotKota)) {
+    const y = Number(yStr);
+    out[y] = {};
+    const months = data.pivotKota[y];
+    for (const mStr of Object.keys(months)) {
+      const mi = Number(mStr);
+      const cell = months[mi]?.[kota];
+      if (cell) {
+        out[y][mi] = { ...cell };
+      }
+    }
+  }
+  return out;
 }
