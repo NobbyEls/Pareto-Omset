@@ -7,9 +7,8 @@ function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
   const stored = window.localStorage.getItem(STORAGE_KEY) as Theme | null;
   if (stored === "light" || stored === "dark") return stored;
-  return window.matchMedia("(prefers-color-scheme: light)").matches
-    ? "light"
-    : "dark";
+  // Default to dark to match the premium glassmorphism look.
+  return "dark";
 }
 
 export function useTheme() {
@@ -26,21 +25,22 @@ export function useTheme() {
 }
 
 /**
- * Centralized chart color palette so every chart agrees on a department's hue.
+ * Centralized chart color palette — aligns with the omset premium dark theme:
+ * indigo / cyan / pink / amber for the four canonical buckets.
  */
 export const CHART_COLORS = {
-  NB: "#28b955",
-  PC: "#0ea5e9",
-  JASA: "#f59e0b",
-  "Grand Total": "#94a3b8",
+  NB: "#6366f1", // indigo — biggest bucket, headline color
+  PC: "#06b6d4", // cyan
+  JASA: "#ec4899", // pink
+  "Grand Total": "#f59e0b", // amber, used for total accents
 } as const;
 
 export const YEAR_COLORS = [
-  "#28b955",
-  "#0ea5e9",
-  "#f59e0b",
-  "#a855f7",
-  "#ef4444",
-  "#10b981",
-  "#6366f1",
+  "#6366f1", // indigo
+  "#ec4899", // pink
+  "#10b981", // emerald
+  "#f59e0b", // amber
+  "#06b6d4", // cyan
+  "#a855f7", // purple
+  "#f43f5e", // rose
 ];
