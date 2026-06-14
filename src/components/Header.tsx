@@ -1,16 +1,10 @@
-import {
-  RefreshCw,
-  Sun,
-  Moon,
-  ExternalLink,
-} from "lucide-react";
+import { RefreshCw, Sun, Moon } from "lucide-react";
 import { useTheme } from "../lib/theme";
 
 interface HeaderProps {
   loading: boolean;
   fetchedAt: Date | null;
   onRefresh: () => void;
-  csvUrl: string;
 }
 
 function timeAgo(d: Date): string {
@@ -25,11 +19,12 @@ function timeAgo(d: Date): string {
   return `${d2} hari lalu`;
 }
 
-export function Header({ loading, fetchedAt, onRefresh, csvUrl }: HeaderProps) {
+export function Header({ loading, fetchedAt, onRefresh }: HeaderProps) {
   const { theme, toggle } = useTheme();
 
   return (
-    <header className="sticky top-0 z-30 backdrop-blur-xl"
+    <header
+      className="sticky top-0 z-30 backdrop-blur-xl"
       style={{
         background:
           "linear-gradient(180deg, var(--bg-base) 60%, transparent 100%)",
@@ -64,27 +59,13 @@ export function Header({ loading, fetchedAt, onRefresh, csvUrl }: HeaderProps) {
             <h1 className="brand-gradient text-base font-bold md:text-lg">
               Pareto Omset
             </h1>
-            <p
-              className="text-xs"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               Sales Analytics Dashboard
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <a
-            href={csvUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-glass hidden md:inline-flex"
-            title="Buka sumber data (CSV publik)"
-          >
-            <ExternalLink className="h-4 w-4" />
-            <span>Sumber</span>
-          </a>
-
           {fetchedAt && (
             <div className="chip">
               <span

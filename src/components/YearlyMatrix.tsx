@@ -231,7 +231,14 @@ export function YearlyMatrix({ data, year }: Props) {
               </td>
               {COLS.flatMap((c) => {
                 const cur = cellValue(year, idx, c.key);
-                const prevMonth = idx > 0 ? cellValue(year, idx - 1, c.key) : null;
+                // MoM: bulan sebelumnya. Untuk Januari (idx 0), ambil dari
+                // Desember tahun sebelumnya supaya growth tetap terhitung.
+                const prevMonth =
+                  idx > 0
+                    ? cellValue(year, idx - 1, c.key)
+                    : hasPrevYear
+                      ? cellValue(prevYear, 11, c.key)
+                      : null;
                 const yoyPrev = hasPrevYear
                   ? cellValue(prevYear, idx, c.key)
                   : null;

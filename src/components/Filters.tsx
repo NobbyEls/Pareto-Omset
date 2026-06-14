@@ -1,39 +1,26 @@
 import { Calendar, Layers } from "lucide-react";
 import { DEPARTMENTS, type Department } from "../lib/csvParser";
-import { classNames } from "../lib/format";
 
 interface FiltersProps {
   years: number[];
-  selectedYears: number[];
-  onYearsChange: (next: number[]) => void;
+  /** The single active year — drives every chart and matrix. */
+  primaryYear: number;
+  /** Switch to a different active year. */
+  onPrimaryYearChange: (y: number) => void;
 
   departments: Department[];
   selectedDepartments: Department[];
   onDepartmentsChange: (next: Department[]) => void;
-
-  primaryYear: number | null;
-  onPrimaryYearChange: (y: number) => void;
 }
 
 export function Filters({
   years,
-  selectedYears,
-  onYearsChange,
+  primaryYear,
+  onPrimaryYearChange,
   departments,
   selectedDepartments,
   onDepartmentsChange,
-  primaryYear,
-  onPrimaryYearChange,
 }: FiltersProps) {
-  const toggleYear = (y: number) => {
-    if (selectedYears.includes(y)) {
-      if (selectedYears.length === 1) return;
-      onYearsChange(selectedYears.filter((x) => x !== y));
-    } else {
-      onYearsChange([...selectedYears, y].sort((a, b) => a - b));
-    }
-  };
-
   const toggleDept = (d: Department) => {
     if (selectedDepartments.includes(d)) {
       if (selectedDepartments.length === 1) return;
@@ -57,33 +44,28 @@ export function Filters({
           <Calendar className="h-4 w-4" />
           Tahun
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div
+          role="radiogroup"
+          aria-label="Pilih tahun"
+          className="flex flex-wrap gap-2"
+        >
           {years.map((y) => {
-            const active = selectedYears.includes(y);
-            const isPrimary = primaryYear === y;
+            const active = primaryYear === y;
             return (
               <button
                 key={y}
-                onClick={() => toggleYear(y)}
-                onDoubleClick={() => onPrimaryYearChange(y)}
-                title={
-                  isPrimary
-                    ? "Tahun utama (klik 2x untuk mengubah)"
-                    : "Klik 2x untuk jadikan tahun utama"
-                }
-                className={classNames(
-                  "rounded-xl border px-3 py-1.5 text-sm font-semibold transition",
-                  active ? "chip-active-strong" : ""
-                )}
+                role="radio"
+                aria-checked={active}
+                onClick={() => onPrimaryYearChange(y)}
+                className="rounded-xl border px-3 py-1.5 text-sm font-semibold transition"
                 style={
                   active
                     ? {
-                        background: "rgba(99, 102, 241, 0.15)",
-                        borderColor: "rgba(99, 102, 241, 0.45)",
-                        color: "#c7d2fe",
-                        boxShadow: isPrimary
-                          ? "0 0 0 2px rgba(99, 102, 241, 0.45), 0 0 25px rgba(236, 72, 153, 0.25)"
-                          : undefined,
+                        background:
+                          "linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(236, 72, 153, 0.25))",
+                        borderColor: "rgba(99, 102, 241, 0.55)",
+                        color: "#fff",
+                        boxShadow: "0 0 25px rgba(236, 72, 153, 0.25)",
                       }
                     : {
                         background: "var(--bg-glass)",
@@ -93,15 +75,6 @@ export function Filters({
                 }
               >
                 {y}
-                {isPrimary && (
-                  <span
-                    className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #6366f1, #ec4899)",
-                    }}
-                  />
-                )}
               </button>
             );
           })}
@@ -128,9 +101,7 @@ export function Filters({
               <button
                 key={d}
                 onClick={() => toggleDept(d)}
-                className={classNames(
-                  "rounded-xl border px-3 py-1.5 text-sm font-medium transition"
-                )}
+                className="rounded-xl border px-3 py-1.5 text-sm font-medium transition"
                 style={
                   active
                     ? {
