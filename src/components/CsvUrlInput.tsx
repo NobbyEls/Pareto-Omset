@@ -6,10 +6,6 @@ interface Props {
   onChange: (next: string) => void;
 }
 
-/**
- * Lets the user swap the CSV source URL at runtime — handy when the
- * spreadsheet is republished under a different gid or moved.
- */
 export function CsvUrlInput({ url, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(url);
@@ -21,7 +17,7 @@ export function CsvUrlInput({ url, onChange }: Props) {
           setDraft(url);
           setOpen(true);
         }}
-        className="btn"
+        className="btn-glass"
         title="Ganti URL CSV sumber data"
       >
         <Link2 className="h-4 w-4" />
@@ -50,11 +46,7 @@ export function CsvUrlInput({ url, onChange }: Props) {
       >
         <Check className="h-4 w-4" />
       </button>
-      <button
-        onClick={() => setOpen(false)}
-        className="btn"
-        title="Batal"
-      >
+      <button onClick={() => setOpen(false)} className="btn-glass" title="Batal">
         <X className="h-4 w-4" />
       </button>
     </div>

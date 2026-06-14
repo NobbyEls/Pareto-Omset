@@ -44,7 +44,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
       for (let i = 0; i < 12; i++) {
         const m = data.pivot[y]?.[i];
         if (!m) continue;
-        const row: Row = {
+        out.push({
           year: y,
           monthIdx: i,
           month: MONTHS_ID[i],
@@ -52,8 +52,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
           PC: typeof m.PC === "number" ? m.PC : null,
           JASA: typeof m.JASA === "number" ? m.JASA : null,
           total: totalFor(data.pivot, y, i),
-        };
-        out.push(row);
+        });
       }
     }
     return out;
@@ -68,7 +67,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
           String(row.year).includes(q) || row.month.toLowerCase().includes(q)
       );
     }
-    const sorted = [...r].sort((a, b) => {
+    return [...r].sort((a, b) => {
       const av = a[sortKey];
       const bv = b[sortKey];
       const an = typeof av === "number" ? av : av == null ? -Infinity : NaN;
@@ -76,7 +75,6 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
       const cmp = an === bn ? 0 : an > bn ? 1 : -1;
       return sortDir === "asc" ? cmp : -cmp;
     });
-    return sorted;
   }, [rows, query, sortKey, sortDir]);
 
   const onSort = (k: SortKey) => {
@@ -125,9 +123,10 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
     <th
       onClick={() => onSort(k)}
       className={classNames(
-        "cursor-pointer select-none px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+        "cursor-pointer select-none px-3 py-2 text-xs font-semibold uppercase tracking-wider transition",
         align === "right" ? "text-right" : "text-left"
       )}
+      style={{ color: "var(--text-dim)" }}
     >
       <span
         className={classNames(
@@ -137,12 +136,8 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
       >
         {label}
         <ArrowUpDown
-          className={classNames(
-            "h-3 w-3 transition",
-            sortKey === k
-              ? "text-brand-500"
-              : "text-slate-300 dark:text-slate-600"
-          )}
+          className={classNames("h-3 w-3 transition")}
+          style={{ color: sortKey === k ? "#a5b4fc" : "var(--text-dim)" }}
         />
       </span>
     </th>
@@ -152,14 +147,17 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
     <div className="glass-card overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <div>
-          <h3 className="text-sm font-semibold">Detail Per Bulan</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <h3 className="heading text-sm">Detail Per Bulan</h3>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             {filtered.length} baris • klik header untuk mengurutkan
           </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: "var(--text-dim)" }}
+            />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -167,7 +165,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
               className="input pl-8"
             />
           </div>
-          <button onClick={downloadCSV} className="btn">
+          <button onClick={downloadCSV} className="btn-glass">
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Ekspor CSV</span>
           </button>
@@ -175,7 +173,13 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          <thead className="border-y border-slate-200 bg-slate-50/60 dark:border-white/5 dark:bg-white/[0.02]">
+          <thead
+            style={{
+              background: "var(--bg-glass)",
+              borderTop: "1px solid var(--border-subtle)",
+              borderBottom: "1px solid var(--border-subtle)",
+            }}
+          >
             <tr>
               <Th k="year" label="Tahun" align="left" />
               <Th k="monthIdx" label="Bulan" align="left" />
@@ -190,7 +194,8 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
               <tr>
                 <td
                   colSpan={3 + visibleDepts.length}
-                  className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400"
+                  className="px-5 py-10 text-center text-sm"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   Tidak ada data yang cocok.
                 </td>
@@ -199,26 +204,51 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
             {filtered.map((r) => (
               <tr
                 key={`${r.year}-${r.monthIdx}`}
-                className="border-b border-slate-100 transition hover:bg-slate-50/60 dark:border-white/5 dark:hover:bg-white/[0.03]"
+                style={{
+                  borderBottom: "1px solid var(--border-subtle)",
+                  transition: "background 0.15s",
+                }}
               >
-                <td className="px-3 py-2 text-sm font-semibold">{r.year}</td>
-                <td className="px-3 py-2 text-sm">{r.month}</td>
+                <td
+                  className="px-3 py-2 text-sm font-semibold"
+                  style={{ color: "#c7d2fe" }}
+                >
+                  {r.year}
+                </td>
+                <td
+                  className="px-3 py-2 text-sm"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {r.month}
+                </td>
                 {visibleDepts.includes("NB") && (
-                  <td className="px-3 py-2 text-right text-sm tabular-nums">
+                  <td
+                    className="px-3 py-2 text-right font-mono text-sm tabular-nums"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {r.NB == null ? "—" : formatIDR(r.NB)}
                   </td>
                 )}
                 {visibleDepts.includes("PC") && (
-                  <td className="px-3 py-2 text-right text-sm tabular-nums">
+                  <td
+                    className="px-3 py-2 text-right font-mono text-sm tabular-nums"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {r.PC == null ? "—" : formatIDR(r.PC)}
                   </td>
                 )}
                 {visibleDepts.includes("JASA") && (
-                  <td className="px-3 py-2 text-right text-sm tabular-nums">
+                  <td
+                    className="px-3 py-2 text-right font-mono text-sm tabular-nums"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {r.JASA == null ? "—" : formatIDR(r.JASA)}
                   </td>
                 )}
-                <td className="px-3 py-2 text-right text-sm font-semibold tabular-nums text-brand-600 dark:text-brand-400">
+                <td
+                  className="px-3 py-2 text-right font-mono text-sm font-semibold tabular-nums"
+                  style={{ color: "#fcd34d" }}
+                >
                   {r.total == null ? "—" : formatIDR(r.total)}
                 </td>
               </tr>

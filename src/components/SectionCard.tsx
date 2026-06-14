@@ -6,6 +6,8 @@ interface Props {
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Optional small color hint shown next to the title (chart-tag style). */
+  tag?: { label: string; tone: "blue" | "purple" | "pink" | "green" | "amber" | "cyan" };
 }
 
 export function SectionCard({
@@ -14,16 +16,25 @@ export function SectionCard({
   action,
   children,
   className,
+  tag,
 }: Props) {
   return (
     <section
       className={`glass-card flex flex-col p-5 animate-fadeIn ${className ?? ""}`}
     >
-      <header className="mb-3 flex items-start justify-between gap-3">
+      <header className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="heading text-base">{title}</h3>
+            {tag && (
+              <span className={`chart-tag tag-${tag.tone}`}>{tag.label}</span>
+            )}
+          </div>
           {description && (
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p
+              className="mt-1 text-xs"
+              style={{ color: "var(--text-muted)" }}
+            >
               {description}
             </p>
           )}

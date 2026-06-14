@@ -27,7 +27,7 @@ export function Filters({
 }: FiltersProps) {
   const toggleYear = (y: number) => {
     if (selectedYears.includes(y)) {
-      if (selectedYears.length === 1) return; // keep at least one
+      if (selectedYears.length === 1) return;
       onYearsChange(selectedYears.filter((x) => x !== y));
     } else {
       onYearsChange([...selectedYears, y].sort((a, b) => a - b));
@@ -50,7 +50,10 @@ export function Filters({
   return (
     <div className="glass-card flex flex-wrap items-center gap-x-6 gap-y-4 p-4 md:p-5">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div
+          className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider"
+          style={{ color: "var(--text-dim)" }}
+        >
           <Calendar className="h-4 w-4" />
           Tahun
         </div>
@@ -70,15 +73,34 @@ export function Filters({
                 }
                 className={classNames(
                   "rounded-xl border px-3 py-1.5 text-sm font-semibold transition",
-                  active
-                    ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300",
-                  isPrimary && "ring-2 ring-brand-500/40"
+                  active ? "chip-active-strong" : ""
                 )}
+                style={
+                  active
+                    ? {
+                        background: "rgba(99, 102, 241, 0.15)",
+                        borderColor: "rgba(99, 102, 241, 0.45)",
+                        color: "#c7d2fe",
+                        boxShadow: isPrimary
+                          ? "0 0 0 2px rgba(99, 102, 241, 0.45), 0 0 25px rgba(236, 72, 153, 0.25)"
+                          : undefined,
+                      }
+                    : {
+                        background: "var(--bg-glass)",
+                        borderColor: "var(--border-medium)",
+                        color: "var(--text-muted)",
+                      }
+                }
               >
                 {y}
                 {isPrimary && (
-                  <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
+                  <span
+                    className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #6366f1, #ec4899)",
+                    }}
+                  />
                 )}
               </button>
             );
@@ -86,10 +108,16 @@ export function Filters({
         </div>
       </div>
 
-      <div className="hidden h-8 w-px bg-slate-200 dark:bg-white/10 md:block" />
+      <div
+        className="hidden h-8 w-px md:block"
+        style={{ background: "var(--border-medium)" }}
+      />
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div
+          className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider"
+          style={{ color: "var(--text-dim)" }}
+        >
           <Layers className="h-4 w-4" />
           Departemen
         </div>
@@ -101,11 +129,21 @@ export function Filters({
                 key={d}
                 onClick={() => toggleDept(d)}
                 className={classNames(
-                  "rounded-xl border px-3 py-1.5 text-sm font-medium transition",
-                  active
-                    ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300"
-                    : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-400"
+                  "rounded-xl border px-3 py-1.5 text-sm font-medium transition"
                 )}
+                style={
+                  active
+                    ? {
+                        background: "rgba(236, 72, 153, 0.15)",
+                        borderColor: "rgba(236, 72, 153, 0.45)",
+                        color: "#fbcfe8",
+                      }
+                    : {
+                        background: "var(--bg-glass)",
+                        borderColor: "var(--border-medium)",
+                        color: "var(--text-dim)",
+                      }
+                }
               >
                 {d}
               </button>

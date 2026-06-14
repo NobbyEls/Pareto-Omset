@@ -2,7 +2,6 @@ import {
   RefreshCw,
   Sun,
   Moon,
-  Activity,
   ExternalLink,
 } from "lucide-react";
 import { useTheme } from "../lib/theme";
@@ -30,17 +29,45 @@ export function Header({ loading, fetchedAt, onRefresh, csvUrl }: HeaderProps) {
   const { theme, toggle } = useTheme();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/70 backdrop-blur-xl dark:border-white/5 dark:bg-[#0a0f1c]/70">
+    <header className="sticky top-0 z-30 backdrop-blur-xl"
+      style={{
+        background:
+          "linear-gradient(180deg, var(--bg-base) 60%, transparent 100%)",
+        borderBottom: "1px solid var(--border-subtle)",
+      }}
+    >
       <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-sky-500 shadow-glow">
-            <Activity className="h-5 w-5 text-white" />
+          <div
+            className="grid h-11 w-11 place-items-center rounded-2xl"
+            style={{
+              background:
+                "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)",
+              boxShadow: "0 0 30px rgba(99,102,241,0.45)",
+            }}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 3v18h18" />
+              <path d="M7 16l4-8 4 4 6-12" />
+            </svg>
           </div>
           <div className="leading-tight">
-            <h1 className="text-base font-bold tracking-tight md:text-lg">
+            <h1 className="brand-gradient text-base font-bold md:text-lg">
               Pareto Omset
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p
+              className="text-xs"
+              style={{ color: "var(--text-muted)" }}
+            >
               Sales Analytics Dashboard
             </p>
           </div>
@@ -51,7 +78,7 @@ export function Header({ loading, fetchedAt, onRefresh, csvUrl }: HeaderProps) {
             href={csvUrl}
             target="_blank"
             rel="noreferrer"
-            className="btn hidden md:inline-flex"
+            className="btn-glass hidden md:inline-flex"
             title="Buka sumber data (CSV publik)"
           >
             <ExternalLink className="h-4 w-4" />
@@ -59,8 +86,11 @@ export function Header({ loading, fetchedAt, onRefresh, csvUrl }: HeaderProps) {
           </a>
 
           {fetchedAt && (
-            <div className="chip hidden sm:inline-flex">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-brand-500" />
+            <div className="chip">
+              <span
+                className="h-2 w-2 animate-pulse rounded-full"
+                style={{ background: "var(--emerald)" }}
+              />
               <span>Update {timeAgo(fetchedAt)}</span>
             </div>
           )}
@@ -68,7 +98,7 @@ export function Header({ loading, fetchedAt, onRefresh, csvUrl }: HeaderProps) {
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="btn"
+            className="btn-glass"
             title="Muat ulang data"
           >
             <RefreshCw
@@ -79,7 +109,7 @@ export function Header({ loading, fetchedAt, onRefresh, csvUrl }: HeaderProps) {
 
           <button
             onClick={toggle}
-            className="btn"
+            className="btn-glass"
             title="Toggle tema"
             aria-label="Toggle theme"
           >
