@@ -1,10 +1,13 @@
 import { RefreshCw, Sun, Moon } from "lucide-react";
 import { useTheme } from "../lib/theme";
+import type { ReactNode } from "react";
 
 interface HeaderProps {
   loading: boolean;
   fetchedAt: Date | null;
   onRefresh: () => void;
+  /** Slot rendered below the header row but inside the same sticky container. */
+  children?: ReactNode;
 }
 
 function timeAgo(d: Date): string {
@@ -19,88 +22,90 @@ function timeAgo(d: Date): string {
   return `${d2} hari lalu`;
 }
 
-export function Header({ loading, fetchedAt, onRefresh }: HeaderProps) {
+export function Header({ loading, fetchedAt, onRefresh, children }: HeaderProps) {
   const { theme, toggle } = useTheme();
 
   return (
     <header
-      className="sticky top-0 z-30 backdrop-blur-xl"
+      className="sticky top-0 z-30"
       style={{
-        background:
-          "linear-gradient(180deg, var(--bg-base) 60%, transparent 100%)",
+        background: "var(--bg-base)",
         borderBottom: "1px solid var(--border-subtle)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
       }}
     >
-      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
-        <div className="flex items-center gap-3">
-          <div
-            className="grid h-11 w-11 place-items-center rounded-2xl"
-            style={{
-              background:
-                "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)",
-              boxShadow: "0 0 30px rgba(99,102,241,0.45)",
-            }}
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      <div className="mx-auto max-w-[1500px] px-4 md:px-8">
+        {/* Top bar: logo + actions */}
+        <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="grid h-10 w-10 place-items-center rounded-2xl"
+              style={{
+                background:
+                  "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)",
+                boxShadow: "0 0 25px rgba(99,102,241,0.4)",
+              }}
             >
-              <path d="M3 3v18h18" />
-              <path d="M7 16l4-8 4 4 6-12" />
-            </svg>
-          </div>
-          <div className="leading-tight">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 3v18h18" />
+                <path d="M7 16l4-8 4 4 6-12" />
+              </svg>
+            </div>
             <h1 className="brand-gradient text-base font-bold md:text-lg">
               Pareto Omset
             </h1>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              Sales Analytics Dashboard
-            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {fetchedAt && (
+              <div className="chip hidden sm:inline-flex">
+                <span
+                  className="h-2 w-2 animate-pulse rounded-full"
+                  style={{ background: "var(--emerald)" }}
+                />
+                <span>{timeAgo(fetchedAt)}</span>
+              </div>
+            )}
+
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="btn-glass"
+              title="Muat ulang data"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
+            <button
+              onClick={toggle}
+              className="btn-glass"
+              title="Toggle tema"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {fetchedAt && (
-            <div className="chip">
-              <span
-                className="h-2 w-2 animate-pulse rounded-full"
-                style={{ background: "var(--emerald)" }}
-              />
-              <span>Update {timeAgo(fetchedAt)}</span>
-            </div>
-          )}
-
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="btn-glass"
-            title="Muat ulang data"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-
-          <button
-            onClick={toggle}
-            className="btn-glass"
-            title="Toggle tema"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </button>
-        </div>
+        {/* Filter bar (rendered inside sticky group) */}
+        {children && <div className="pb-3">{children}</div>}
       </div>
     </header>
   );

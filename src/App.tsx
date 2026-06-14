@@ -103,22 +103,23 @@ export default function App() {
       <BgDecoration />
 
       <div className="relative z-10">
-        <Header loading={loading} fetchedAt={fetchedAt} onRefresh={refresh} />
+        <Header loading={loading} fetchedAt={fetchedAt} onRefresh={refresh}>
+          {ready && data && (
+            <Filters
+              years={data.years}
+              kotas={data.kotas}
+              selectedYear={primaryYear}
+              onYearChange={(v) => setPrimaryYear(v)}
+              selectedKota={selectedKota}
+              onKotaChange={setSelectedKota}
+              selectedDept={selectedDept}
+              onDeptChange={setSelectedDept}
+              onReset={handleReset}
+            />
+          )}
+        </Header>
 
         <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8">
-          <div>
-            <h2
-              className="font-display text-xl font-bold tracking-tight md:text-2xl"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Analisa Omset
-            </h2>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Pantau performa bulanan dan tahunan dari spreadsheet yang
-              ter-update otomatis setiap hari.
-            </p>
-          </div>
-
           {loading && !data && <LoadingState />}
           {!loading && error && <ErrorState message={error} />}
           {!loading && !error && data && data.records.length === 0 && (
@@ -127,18 +128,6 @@ export default function App() {
 
           {ready && viewData && data && matrixYear != null && (
             <>
-              <Filters
-                years={data.years}
-                kotas={data.kotas}
-                selectedYear={primaryYear}
-                onYearChange={(v) => setPrimaryYear(v)}
-                selectedKota={selectedKota}
-                onKotaChange={setSelectedKota}
-                selectedDept={selectedDept}
-                onDeptChange={setSelectedDept}
-                onReset={handleReset}
-              />
-
               <KpiCards
                 data={viewData}
                 primaryYear={matrixYear}
