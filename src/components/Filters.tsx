@@ -9,12 +9,14 @@ import {
 export type DeptFilter = Department | "all";
 export type KotaFilter = KotaCode | "all";
 
+export type YearFilter = number | "all";
+
 interface FiltersProps {
   years: number[];
   kotas: KotaCode[];
 
-  selectedYear: number;
-  onYearChange: (y: number) => void;
+  selectedYear: YearFilter;
+  onYearChange: (y: YearFilter) => void;
 
   selectedKota: KotaFilter;
   onKotaChange: (k: KotaFilter) => void;
@@ -59,11 +61,15 @@ export function Filters({
       <div className="filter-grid">
         <Field label="Tahun">
           <select
-            value={selectedYear}
-            onChange={(e) => onYearChange(Number(e.target.value))}
+            value={String(selectedYear)}
+            onChange={(e) => {
+              const v = e.target.value;
+              onYearChange(v === "all" ? "all" : Number(v));
+            }}
           >
+            <option value="all">Semua Tahun</option>
             {years.map((y) => (
-              <option key={y} value={y}>
+              <option key={y} value={String(y)}>
                 {y}
               </option>
             ))}
