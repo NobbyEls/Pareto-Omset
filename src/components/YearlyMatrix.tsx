@@ -25,6 +25,9 @@ interface ColumnDef {
   headerBg: string;
   /** Accent text color when emphasized. */
   accent: string;
+  /** CSS class for light-mode override. */
+  cellClass: string;
+  headerClass: string;
 }
 
 const COLS: ColumnDef[] = [
@@ -34,6 +37,8 @@ const COLS: ColumnDef[] = [
     cellBg: "rgba(99, 102, 241, 0.06)",
     headerBg: "rgba(99, 102, 241, 0.18)",
     accent: "#a5b4fc",
+    cellClass: "matrix-cell-nb",
+    headerClass: "matrix-header-nb",
   },
   {
     key: "PC",
@@ -41,6 +46,8 @@ const COLS: ColumnDef[] = [
     cellBg: "rgba(6, 182, 212, 0.06)",
     headerBg: "rgba(6, 182, 212, 0.18)",
     accent: "#67e8f9",
+    cellClass: "matrix-cell-pc",
+    headerClass: "matrix-header-pc",
   },
   {
     key: "JASA",
@@ -48,6 +55,8 @@ const COLS: ColumnDef[] = [
     cellBg: "rgba(236, 72, 153, 0.06)",
     headerBg: "rgba(236, 72, 153, 0.18)",
     accent: "#f9a8d4",
+    cellClass: "matrix-cell-jasa",
+    headerClass: "matrix-header-jasa",
   },
   {
     key: "TOTAL",
@@ -55,6 +64,8 @@ const COLS: ColumnDef[] = [
     cellBg: "rgba(245, 158, 11, 0.06)",
     headerBg: "rgba(245, 158, 11, 0.2)",
     accent: "#fcd34d",
+    cellClass: "matrix-cell-total",
+    headerClass: "matrix-header-total",
   },
 ];
 
@@ -80,7 +91,7 @@ function PctCell({ value }: { value: number | null }) {
   const positive = value >= 0;
   return (
     <span
-      className="font-mono text-[12px] font-medium tabular-nums"
+      className={`font-mono text-[12px] font-medium tabular-nums ${positive ? "matrix-pct-pos" : "matrix-pct-neg"}`}
       style={{ color: positive ? "#67e8f9" : "#fb7185" }}
     >
       {formatPctID(value)}
@@ -128,6 +139,9 @@ export function YearlyMatrix({ data, year }: Props) {
     color: col.accent,
   });
 
+  const subHeaderClass = (col: ColumnDef) =>
+    `px-3 py-1.5 text-right text-[11px] font-bold uppercase tracking-wider ${col.headerClass}`;
+
   return (
     <div className="overflow-x-auto rounded-xl">
       <table
@@ -173,7 +187,7 @@ export function YearlyMatrix({ data, year }: Props) {
               <th
                 key={c.key}
                 colSpan={3}
-                className="font-display px-3 py-2 text-center text-xs font-bold uppercase tracking-wider"
+                className={`font-display px-3 py-2 text-center text-xs font-bold uppercase tracking-wider ${c.headerClass}`}
                 style={{
                   ...cellBorderStyle,
                   background: c.headerBg,
@@ -189,21 +203,21 @@ export function YearlyMatrix({ data, year }: Props) {
             {COLS.flatMap((c) => [
               <th
                 key={`${c.key}-omset`}
-                className="px-3 py-1.5 text-right text-[11px] font-bold uppercase tracking-wider"
+                className={subHeaderClass(c)}
                 style={subHeaderStyle(c)}
               >
                 Omset
               </th>,
               <th
                 key={`${c.key}-mom`}
-                className="px-3 py-1.5 text-right text-[11px] font-bold uppercase tracking-wider"
+                className={subHeaderClass(c)}
                 style={subHeaderStyle(c)}
               >
                 MoM
               </th>,
               <th
                 key={`${c.key}-yoy`}
-                className="px-3 py-1.5 text-right text-[11px] font-bold uppercase tracking-wider"
+                className={subHeaderClass(c)}
                 style={subHeaderStyle(c)}
               >
                 YoY
@@ -248,7 +262,7 @@ export function YearlyMatrix({ data, year }: Props) {
                 return [
                   <td
                     key={`${m}-${c.key}-omset`}
-                    className="px-3 py-2 text-right tabular-nums"
+                    className={`px-3 py-2 text-right tabular-nums ${c.cellClass}`}
                     style={{ ...cellBorderStyle, background: c.cellBg }}
                   >
                     {cur == null ? (
@@ -264,14 +278,14 @@ export function YearlyMatrix({ data, year }: Props) {
                   </td>,
                   <td
                     key={`${m}-${c.key}-mom`}
-                    className="px-3 py-2 text-right"
+                    className={`px-3 py-2 text-right ${c.cellClass}`}
                     style={{ ...cellBorderStyle, background: c.cellBg }}
                   >
                     <PctCell value={mom} />
                   </td>,
                   <td
                     key={`${m}-${c.key}-yoy`}
-                    className="px-3 py-2 text-right"
+                    className={`px-3 py-2 text-right ${c.cellClass}`}
                     style={{ ...cellBorderStyle, background: c.cellBg }}
                   >
                     <PctCell value={yoy} />

@@ -58,17 +58,17 @@ html:not(.dark) {
   --bg-deep: #e3e8f2;
   --bg-card: rgba(255, 255, 255, 0.82);
   --bg-card-hover: rgba(255, 255, 255, 0.96);
-  --bg-glass: rgba(15, 23, 42, 0.04);
-  --bg-input: rgba(15, 23, 42, 0.04);
+  --bg-glass: rgba(15, 23, 42, 0.05);
+  --bg-input: rgba(15, 23, 42, 0.05);
 
-  --border-subtle: rgba(15, 23, 42, 0.08);
-  --border-medium: rgba(15, 23, 42, 0.13);
-  --border-strong: rgba(15, 23, 42, 0.22);
+  --border-subtle: rgba(15, 23, 42, 0.10);
+  --border-medium: rgba(15, 23, 42, 0.16);
+  --border-strong: rgba(15, 23, 42, 0.26);
 
   --text-primary: #020617;
   --text-secondary: #0f172a;
-  --text-muted: #475569;
-  --text-dim: #64748b;
+  --text-muted: #1e293b;
+  --text-dim: #334155;
 
   --shadow-glow: 0 0 60px rgba(99, 102, 241, 0.1);
   --shadow-card: 0 8px 28px rgba(15, 23, 42, 0.1);
@@ -366,22 +366,22 @@ html:not(.dark) .orb {
     border: 1px solid rgba(6, 182, 212, 0.3);
   }
   html:not(.dark) .tag-blue {
-    color: #1e40af;
+    color: #1e3a8a;
   }
   html:not(.dark) .tag-purple {
-    color: #6d28d9;
+    color: #581c87;
   }
   html:not(.dark) .tag-pink {
-    color: #9d174d;
+    color: #831843;
   }
   html:not(.dark) .tag-green {
-    color: #065f46;
+    color: #064e3b;
   }
   html:not(.dark) .tag-amber {
-    color: #92400e;
+    color: #78350f;
   }
   html:not(.dark) .tag-cyan {
-    color: #155e75;
+    color: #0e4a5c;
   }
   /* ========= Filter bar (omset-style) ========= */
   .filters-section {
@@ -522,3 +522,15 @@ html:not(.dark) ::-webkit-scrollbar-thumb:hover {
   border: 1px solid var(--border-medium) !important;
   border-radius: 10px !important;
 }
+
+/* ======= Light-mode matrix table tint overrides ======= */
+html:not(.dark) .matrix-cell-nb { background: rgba(79, 70, 229, 0.12) !important; }
+html:not(.dark) .matrix-cell-pc { background: rgba(6, 182, 212, 0.12) !important; }
+html:not(.dark) .matrix-cell-jasa { background: rgba(219, 39, 119, 0.12) !important; }
+html:not(.dark) .matrix-cell-total { background: rgba(217, 119, 6, 0.12) !important; }
+html:not(.dark) .matrix-header-nb { background: rgba(79, 70, 229, 0.22) !important; color: #3730a3 !important; }
+html:not(.dark) .matrix-header-pc { background: rgba(6, 182, 212, 0.22) !important; color: #0e7490 !important; }
+html:not(.dark) .matrix-header-jasa { background: rgba(219, 39, 119, 0.22) !important; color: #9d174d !important; }
+html:not(.dark) .matrix-header-total { background: rgba(217, 119, 6, 0.22) !important; color: #92400e !important; }
+html:not(.dark) .matrix-pct-pos { color: #047857 !important; }
+html:not(.dark) .matrix-pct-neg { color: #be123c !important; }
