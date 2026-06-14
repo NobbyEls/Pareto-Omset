@@ -1,127 +1,108 @@
-import { Calendar, Layers } from "lucide-react";
-import { DEPARTMENTS, type Department } from "../lib/csvParser";
+import { Filter as FilterIcon, RotateCcw } from "lucide-react";
+import {
+  DEPARTMENTS,
+  KOTA_NAMES,
+  type Department,
+  type KotaCode,
+} from "../lib/csvParser";
+
+export type DeptFilter = Department | "all";
+export type KotaFilter = KotaCode | "all";
 
 interface FiltersProps {
   years: number[];
-  /** The single active year — drives every chart and matrix. */
-  primaryYear: number;
-  /** Switch to a different active year. */
-  onPrimaryYearChange: (y: number) => void;
+  kotas: KotaCode[];
 
-  departments: Department[];
-  selectedDepartments: Department[];
-  onDepartmentsChange: (next: Department[]) => void;
+  selectedYear: number;
+  onYearChange: (y: number) => void;
+
+  selectedKota: KotaFilter;
+  onKotaChange: (k: KotaFilter) => void;
+
+  selectedDept: DeptFilter;
+  onDeptChange: (d: DeptFilter) => void;
+
+  onReset: () => void;
+}
+
+interface FieldProps {
+  label: string;
+  children: React.ReactNode;
+}
+
+function Field({ label, children }: FieldProps) {
+  return (
+    <div className="filter-group">
+      <label>{label}</label>
+      {children}
+    </div>
+  );
 }
 
 export function Filters({
   years,
-  primaryYear,
-  onPrimaryYearChange,
-  departments,
-  selectedDepartments,
-  onDepartmentsChange,
+  kotas,
+  selectedYear,
+  onYearChange,
+  selectedKota,
+  onKotaChange,
+  selectedDept,
+  onDeptChange,
+  onReset,
 }: FiltersProps) {
-  const toggleDept = (d: Department) => {
-    if (selectedDepartments.includes(d)) {
-      if (selectedDepartments.length === 1) return;
-      onDepartmentsChange(selectedDepartments.filter((x) => x !== d));
-    } else {
-      onDepartmentsChange(
-        [...selectedDepartments, d].sort(
-          (a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)
-        )
-      );
-    }
-  };
-
   return (
-    <div className="glass-card flex flex-wrap items-center gap-x-6 gap-y-4 p-4 md:p-5">
-      <div className="flex items-center gap-3">
-        <div
-          className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider"
-          style={{ color: "var(--text-dim)" }}
-        >
-          <Calendar className="h-4 w-4" />
-          Tahun
-        </div>
-        <div
-          role="radiogroup"
-          aria-label="Pilih tahun"
-          className="flex flex-wrap gap-2"
-        >
-          {years.map((y) => {
-            const active = primaryYear === y;
-            return (
-              <button
-                key={y}
-                role="radio"
-                aria-checked={active}
-                onClick={() => onPrimaryYearChange(y)}
-                className="rounded-xl border px-3 py-1.5 text-sm font-semibold transition"
-                style={
-                  active
-                    ? {
-                        background:
-                          "linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(236, 72, 153, 0.25))",
-                        borderColor: "rgba(99, 102, 241, 0.55)",
-                        color: "#fff",
-                        boxShadow: "0 0 25px rgba(236, 72, 153, 0.25)",
-                      }
-                    : {
-                        background: "var(--bg-glass)",
-                        borderColor: "var(--border-medium)",
-                        color: "var(--text-muted)",
-                      }
-                }
-              >
+    <section className="filters-section animate-fadeIn">
+      <div className="filters-icon" aria-hidden>
+        <FilterIcon className="h-5 w-5" />
+      </div>
+
+      <div className="filter-grid">
+        <Field label="Tahun">
+          <select
+            value={selectedYear}
+            onChange={(e) => onYearChange(Number(e.target.value))}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
                 {y}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+              </option>
+            ))}
+          </select>
+        </Field>
 
-      <div
-        className="hidden h-8 w-px md:block"
-        style={{ background: "var(--border-medium)" }}
-      />
+        <Field label="Kota">
+          <select
+            value={selectedKota}
+            onChange={(e) => onKotaChange(e.target.value as KotaFilter)}
+          >
+            <option value="all">Semua Kota</option>
+            {kotas.map((k) => (
+              <option key={k} value={k}>
+                {KOTA_NAMES[k]} ({k})
+              </option>
+            ))}
+          </select>
+        </Field>
 
-      <div className="flex items-center gap-3">
-        <div
-          className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider"
-          style={{ color: "var(--text-dim)" }}
-        >
-          <Layers className="h-4 w-4" />
-          Departemen
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {departments.map((d) => {
-            const active = selectedDepartments.includes(d);
-            return (
-              <button
-                key={d}
-                onClick={() => toggleDept(d)}
-                className="rounded-xl border px-3 py-1.5 text-sm font-medium transition"
-                style={
-                  active
-                    ? {
-                        background: "rgba(236, 72, 153, 0.15)",
-                        borderColor: "rgba(236, 72, 153, 0.45)",
-                        color: "#fbcfe8",
-                      }
-                    : {
-                        background: "var(--bg-glass)",
-                        borderColor: "var(--border-medium)",
-                        color: "var(--text-dim)",
-                      }
-                }
-              >
+        <Field label="Departemen">
+          <select
+            value={selectedDept}
+            onChange={(e) => onDeptChange(e.target.value as DeptFilter)}
+          >
+            <option value="all">Semua Departemen</option>
+            {DEPARTMENTS.map((d) => (
+              <option key={d} value={d}>
                 {d}
-              </button>
-            );
-          })}
-        </div>
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
-    </div>
+
+      <button onClick={onReset} className="btn-reset" type="button">
+        <RotateCcw className="h-3.5 w-3.5" />
+        Reset
+      </button>
+    </section>
   );
 }
