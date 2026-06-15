@@ -17,6 +17,7 @@ import { SectionCard } from "./SectionCard";
 /* ─── Color palette for Jasa ──────────────────────────── */
 const JASA_PART_COLOR = "#f59e0b"; // amber
 const JASA_SERVICE_COLOR = "#6366f1"; // indigo
+const JASA_SALES_COLOR = "#10b981"; // emerald
 
 const KOTA_GRADIENTS: Record<string, string> = {
   YOGYAKARTA: "linear-gradient(135deg, #6366f1, #ec4899)",
@@ -66,6 +67,7 @@ function KotaRow({
   cabang,
   jasaPart,
   jasaService,
+  jasaSales,
   total,
   share,
   maxShare,
@@ -73,6 +75,7 @@ function KotaRow({
   cabang: string;
   jasaPart: number;
   jasaService: number;
+  jasaSales: number;
   total: number;
   share: number;
   maxShare: number;
@@ -81,6 +84,7 @@ function KotaRow({
   const barWidth = maxShare > 0 ? (share / maxShare) * 100 : 0;
   const servicePct = total > 0 ? ((jasaService / total) * 100).toFixed(1) : "0.0";
   const partPct = total > 0 ? ((jasaPart / total) * 100).toFixed(1) : "0.0";
+  const salesPct = total > 0 ? ((jasaSales / total) * 100).toFixed(1) : "0.0";
 
   return (
     <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
@@ -110,6 +114,12 @@ function KotaRow({
         {formatIDRCompact(jasaService)}
         <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
           ({servicePct}%)
+        </span>
+      </td>
+      <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_SALES_COLOR }}>
+        {formatIDRCompact(jasaSales)}
+        <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
+          ({salesPct}%)
         </span>
       </td>
       <td className="px-3 py-3 text-right font-mono font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
@@ -142,6 +152,7 @@ export function JasaBreakdown() {
       name: m.bulan.slice(0, 3),
       "Jasa Part": m.jasaPart,
       "Jasa Service": m.jasaService,
+      "Jasa Sales": m.jasaSales,
     }));
   }, [data]);
 
@@ -179,13 +190,15 @@ export function JasaBreakdown() {
   const maxShare = Math.max(...data.byKota.map((k) => k.share), 1);
   const totalPart = data.byKota.reduce((s, k) => s + k.jasaPart, 0);
   const totalService = data.byKota.reduce((s, k) => s + k.jasaService, 0);
+  const totalSales = data.byKota.reduce((s, k) => s + k.jasaSales, 0);
   const partPctGlobal = data.grandTotal > 0 ? ((totalPart / data.grandTotal) * 100).toFixed(1) : "0";
   const servicePctGlobal = data.grandTotal > 0 ? ((totalService / data.grandTotal) * 100).toFixed(1) : "0";
+  const salesPctGlobal = data.grandTotal > 0 ? ((totalSales / data.grandTotal) * 100).toFixed(1) : "0";
 
   return (
     <div className="space-y-5">
       {/* KPI summary cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="glass-card flex items-center gap-3 p-4">
           <div
             className="grid h-10 w-10 place-items-center rounded-xl"
@@ -240,12 +253,31 @@ export function JasaBreakdown() {
             </div>
           </div>
         </div>
+        <div className="glass-card flex items-center gap-3 p-4">
+          <div
+            className="grid h-10 w-10 place-items-center rounded-xl"
+            style={{ background: JASA_SALES_COLOR }}
+          >
+            <TrendingUp className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <div className="text-xs" style={{ color: "var(--text-dim)" }}>
+              Jasa Sales
+            </div>
+            <div className="font-mono text-lg font-bold" style={{ color: JASA_SALES_COLOR }}>
+              {formatIDRCompact(totalSales)}
+              <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-muted)" }}>
+                ({salesPctGlobal}%)
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stacked bar chart - monthly trend */}
       <SectionCard
         title="Tren Bulanan Jasa"
-        description="Perbandingan Jasa Part vs Jasa Service per bulan"
+        description="Perbandingan Jasa Part vs Jasa Service vs Jasa Sales per bulan"
         tag={{ label: "Jasa - Tren", tone: "amber" }}
       >
         <div className="h-72">
@@ -278,6 +310,12 @@ export function JasaBreakdown() {
                 dataKey="Jasa Part"
                 stackId="a"
                 fill={JASA_PART_COLOR}
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar
+                dataKey="Jasa Sales"
+                stackId="a"
+                fill={JASA_SALES_COLOR}
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -288,12 +326,12 @@ export function JasaBreakdown() {
       {/* Table breakdown per kota */}
       <SectionCard
         title="Breakdown per Kota"
-        description="Detail kontribusi Jasa Part dan Jasa Service per cabang (Jan-Jun)"
+        description="Detail kontribusi Jasa Part, Jasa Service, dan Jasa Sales per cabang (Jan-Jun)"
         tag={{ label: "Jasa - Kota", tone: "pink" }}
       >
         <div className="overflow-x-auto rounded-xl">
           <table
-            className="w-full min-w-[700px] text-sm"
+            className="w-full min-w-[800px] text-sm"
             style={{
               borderCollapse: "separate",
               borderSpacing: 0,
@@ -303,7 +341,7 @@ export function JasaBreakdown() {
           >
             <thead>
               <tr>
-                {["Kota", "Jasa Part", "Jasa Service", "Total", "% Share"].map(
+                {["Kota", "Jasa Part", "Jasa Service", "Jasa Sales", "Total", "% Share"].map(
                   (col, i) => (
                     <th
                       key={col}
@@ -329,6 +367,7 @@ export function JasaBreakdown() {
                   cabang={row.cabang}
                   jasaPart={row.jasaPart}
                   jasaService={row.jasaService}
+                  jasaSales={row.jasaSales}
                   total={row.total}
                   share={row.share}
                   maxShare={maxShare}
@@ -353,6 +392,12 @@ export function JasaBreakdown() {
                   style={{ color: JASA_SERVICE_COLOR }}
                 >
                   {formatIDRCompact(totalService)}
+                </td>
+                <td
+                  className="px-3 py-3 text-right font-mono font-bold tabular-nums"
+                  style={{ color: JASA_SALES_COLOR }}
+                >
+                  {formatIDRCompact(totalSales)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono font-bold tabular-nums"
