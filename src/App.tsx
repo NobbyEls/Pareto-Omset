@@ -12,8 +12,8 @@ import { MonthlyAnalysis } from "./components/MonthlyAnalysis";
 import {
   EmptyState,
   ErrorState,
-  LoadingState,
 } from "./components/EmptyState";
+import { LoadingOverlay } from "./components/LoadingOverlay";
 import { MonthlyTrendChart } from "./components/charts/MonthlyTrendChart";
 import { DepartmentDonut } from "./components/charts/DepartmentDonut";
 import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
@@ -101,9 +101,31 @@ export default function App() {
   const kotaLabel =
     selectedKota === "all" ? "Semua Kota" : KOTA_NAMES[selectedKota];
 
+  /**
+   * The full-screen loading splash should appear:
+   *  - on the very first load, before any cached data is on screen
+   *  - whenever the user clicks "Update Data" (refreshing === true)
+   * It hides itself otherwise. Distinct copy per scenario so the user
+   * understands what's happening.
+   */
+  const showLoadingOverlay = (loading && !data) || refreshing;
+  const isInitialLoad = loading && !data;
+  const overlayTitle = isInitialLoad
+    ? "Memuat Data Analytics"
+    : "Memperbarui Data";
+  const overlayStatus = isInitialLoad
+    ? `Mengambil data ${new Date().getFullYear()}...`
+    : "Sinkronisasi dengan Apps Script...";
+
   return (
     <div className="relative min-h-screen">
       <BgDecoration />
+
+      <LoadingOverlay
+        visible={showLoadingOverlay}
+        title={overlayTitle}
+        status={overlayStatus}
+      />
 
       <div className="relative z-10">
         <Header loading={loading} refreshing={refreshing} fetchedAt={fetchedAt} fromCache={fromCache} isStale={isStale} onUpdateData={updateData}>
@@ -126,7 +148,6 @@ export default function App() {
         </Header>
 
         <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8">
-          {loading && !data && <LoadingState />}
           {!loading && error && <ErrorState message={error} />}
           {!loading && !error && data && data.records.length === 0 && (
             <EmptyState />
