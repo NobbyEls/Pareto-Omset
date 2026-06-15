@@ -125,7 +125,7 @@ export function Header({
           </div>
         </div>
 
-        {children && <div className="pb-3">{children}</div>}
+        {children && <div className="flex flex-col gap-3 pb-3">{children}</div>}
       </div>
     </header>
   );
