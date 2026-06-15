@@ -330,11 +330,12 @@ export function useJasaDataset(): JasaDatasetState {
 
   const updateData = useCallback(() => setForceUpdate((t) => t + 1), []);
 
-  // On mount: try cache
+  // On mount: try cache — but only if jasa sales cache also exists
   useEffect(() => {
     const cached = loadJasaCache();
     const cachedSales = loadJasaSalesCache();
-    if (cached) {
+    // Only use cache if we have BOTH jasa records AND sales records cached
+    if (cached && cachedSales.length > 0) {
       const parsed = parseJasaCSV(cached.text, cachedSales);
       if (parsed.records.length > 0) {
         setData(parsed);
@@ -343,6 +344,7 @@ export function useJasaDataset(): JasaDatasetState {
         return;
       }
     }
+    // No valid cache (or sales cache missing) — fetch fresh
     setForceUpdate(1);
   }, []);
 
