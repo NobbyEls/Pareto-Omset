@@ -4,37 +4,92 @@ import { parseCSV, type ParsedDataset } from "./csvParser";
 export const DEFAULT_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXIuWnOk4-NoraIjEfqp0vDZCnKhqiklrskW_rfJxQatuPtohbwKtcz5TDTwuq7DW3HmzXAa_q2RqI/pub?gid=1311218554&single=true&output=csv";
 
+const CACHE_KEY = "pareto-omset-cache";
+const CACHE_TS_KEY = "pareto-omset-cache-ts";
+
 export interface DatasetState {
   data: ParsedDataset | null;
   loading: boolean;
   error: string | null;
   fetchedAt: Date | null;
-  refresh: () => void;
+  /** True when using cached data (not a fresh fetch). */
+  fromCache: boolean;
+  /** Force-fetch fresh data from Google Sheets (bypasses cache). */
+  updateData: () => void;
+}
+
+/** Try to load cached CSV text from localStorage. */
+function loadCache(): { text: string; ts: Date } | null {
+  try {
+    const text = localStorage.getItem(CACHE_KEY);
+    const tsStr = localStorage.getItem(CACHE_TS_KEY);
+    if (text && tsStr) {
+      return { text, ts: new Date(tsStr) };
+    }
+  } catch (_) {
+    // localStorage unavailable or corrupt
+  }
+  return null;
+}
+
+/** Save CSV text to localStorage with timestamp. */
+function saveCache(text: string): void {
+  try {
+    localStorage.setItem(CACHE_KEY, text);
+    localStorage.setItem(CACHE_TS_KEY, new Date().toISOString());
+  } catch (_) {
+    // quota exceeded or unavailable — ignore
+  }
 }
 
 /**
- * Loads the CSV, parses it, and re-fetches on demand. Cache-busting
- * query string is appended on each call to bypass Google's CDN caching.
+ * Dataset hook with localStorage caching.
  *
- * Retry logic: Google Sheets sometimes serves a partial response where
- * IMPORTRANGE columns haven't resolved yet (2024 works, 2025/2026 empty).
- * When we detect only 1 year of data, we auto-retry after a short delay
- * (up to 3 times) to give Google time to compute the imported ranges.
+ * Behavior:
+ * 1. On first load: try localStorage cache → if valid, use it instantly (no network)
+ * 2. User clicks "Update Data" → fresh-fetch from Google Sheets, save to cache
+ * 3. If no cache exists on first load → auto-fetch from network
+ * 4. Retry logic for IMPORTRANGE delays (up to 3 retries with 3s delay)
  */
 export function useDataset(): DatasetState {
   const [data, setData] = useState<ParsedDataset | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
-  const [tick, setTick] = useState(0);
+  const [fromCache, setFromCache] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
-  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  const updateData = useCallback(() => setForceUpdate((t) => t + 1), []);
 
+  // On mount: try cache first
   useEffect(() => {
+    const cached = loadCache();
+    if (cached) {
+      const parsed = parseCSV(cached.text);
+      if (parsed.years.length > 0 && parsed.records.length > 0) {
+        setData(parsed);
+        setFetchedAt(cached.ts);
+        setFromCache(true);
+        setLoading(false);
+        console.log(
+          `[Pareto] Loaded from cache (${parsed.years.length} years, ` +
+            `${parsed.records.length} records, cached at ${cached.ts.toLocaleString()})`
+        );
+        return;
+      }
+    }
+    // No valid cache — trigger network fetch
+    setForceUpdate(1);
+  }, []);
+
+  // Network fetch (triggered by forceUpdate > 0)
+  useEffect(() => {
+    if (forceUpdate === 0) return; // skip initial (handled by cache logic above)
+
     const controller = new AbortController();
     let retryCount = 0;
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 3000; // 3 seconds
+    const MAX_RETRIES = 4;
+    const RETRY_DELAY = 3000;
 
     const doFetch = () => {
       const url = `${DEFAULT_CSV_URL}${
@@ -49,8 +104,7 @@ export function useDataset(): DatasetState {
         .then((text) => {
           const parsed = parseCSV(text);
 
-          // If we only got 1 year of data but expect more (IMPORTRANGE not
-          // resolved yet), retry after a delay.
+          // If only 1 year detected (IMPORTRANGE not resolved), retry
           if (parsed.years.length <= 1 && retryCount < MAX_RETRIES) {
             retryCount++;
             console.warn(
@@ -61,8 +115,19 @@ export function useDataset(): DatasetState {
             return;
           }
 
+          // Only save to cache if we got more data than before
+          const prevYears = data?.years.length ?? 0;
+          if (parsed.years.length >= prevYears && parsed.records.length > 0) {
+            saveCache(text);
+            console.log(
+              `[Pareto] Fresh data saved to cache (${parsed.years.length} years, ` +
+                `${parsed.records.length} records)`
+            );
+          }
+
           setData(parsed);
           setFetchedAt(new Date());
+          setFromCache(false);
           setLoading(false);
         })
         .catch((e) => {
@@ -74,10 +139,11 @@ export function useDataset(): DatasetState {
 
     setLoading(true);
     setError(null);
+    setFromCache(false);
     doFetch();
 
     return () => controller.abort();
-  }, [tick]);
+  }, [forceUpdate]);
 
-  return { data, loading, error, fetchedAt, refresh };
+  return { data, loading, error, fetchedAt, fromCache, updateData };
 }

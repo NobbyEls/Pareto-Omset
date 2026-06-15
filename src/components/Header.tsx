@@ -1,12 +1,12 @@
-import { RefreshCw, Sun, Moon } from "lucide-react";
+import { Download, Sun, Moon, Database } from "lucide-react";
 import { useTheme } from "../lib/theme";
 import type { ReactNode } from "react";
 
 interface HeaderProps {
   loading: boolean;
   fetchedAt: Date | null;
-  onRefresh: () => void;
-  /** Slot rendered below the header row but inside the same sticky container. */
+  fromCache: boolean;
+  onUpdateData: () => void;
   children?: ReactNode;
 }
 
@@ -22,7 +22,13 @@ function timeAgo(d: Date): string {
   return `${d2} hari lalu`;
 }
 
-export function Header({ loading, fetchedAt, onRefresh, children }: HeaderProps) {
+export function Header({
+  loading,
+  fetchedAt,
+  fromCache,
+  onUpdateData,
+  children,
+}: HeaderProps) {
   const { theme, toggle } = useTheme();
 
   return (
@@ -36,14 +42,13 @@ export function Header({ loading, fetchedAt, onRefresh, children }: HeaderProps)
       }}
     >
       <div className="mx-auto max-w-[1500px] px-4 md:px-8">
-        {/* Top bar: logo + actions */}
+        {/* Top bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="flex items-center gap-3">
             <div
               className="grid h-10 w-10 place-items-center rounded-2xl"
               style={{
-                background:
-                  "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)",
+                background: "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)",
                 boxShadow: "0 0 25px rgba(99,102,241,0.4)",
               }}
             >
@@ -67,26 +72,29 @@ export function Header({ loading, fetchedAt, onRefresh, children }: HeaderProps)
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Cache / fetch status */}
             {fetchedAt && (
               <div className="chip hidden sm:inline-flex">
-                <span
-                  className="h-2 w-2 animate-pulse rounded-full"
-                  style={{ background: "var(--emerald)" }}
-                />
-                <span>{timeAgo(fetchedAt)}</span>
+                <Database className="h-3 w-3" />
+                <span>
+                  {fromCache ? "Cache" : "Live"} • {timeAgo(fetchedAt)}
+                </span>
               </div>
             )}
 
+            {/* Update Data button */}
             <button
-              onClick={onRefresh}
+              onClick={onUpdateData}
               disabled={loading}
               className="btn-glass"
-              title="Muat ulang data"
+              title="Ambil data terbaru dari Google Sheets (simpan ke cache lokal)"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              <Download
+                className={`h-4 w-4 ${loading ? "animate-bounce" : ""}`}
               />
-              <span className="hidden sm:inline">Refresh</span>
+              <span className="hidden sm:inline">
+                {loading ? "Memuat..." : "Update Data"}
+              </span>
             </button>
 
             <button
@@ -104,7 +112,7 @@ export function Header({ loading, fetchedAt, onRefresh, children }: HeaderProps)
           </div>
         </div>
 
-        {/* Filter bar (rendered inside sticky group) */}
+        {/* Filter bar */}
         {children && <div className="pb-3">{children}</div>}
       </div>
     </header>

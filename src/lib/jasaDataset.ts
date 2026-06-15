@@ -152,18 +152,61 @@ export interface JasaDatasetState {
   data: JasaParsedData | null;
   loading: boolean;
   error: string | null;
+  fromCache: boolean;
+  updateData: () => void;
+}
+
+const JASA_CACHE_KEY = "pareto-jasa-cache";
+const JASA_CACHE_TS_KEY = "pareto-jasa-cache-ts";
+
+function loadJasaCache(): { text: string; ts: Date } | null {
+  try {
+    const text = localStorage.getItem(JASA_CACHE_KEY);
+    const tsStr = localStorage.getItem(JASA_CACHE_TS_KEY);
+    if (text && tsStr) return { text, ts: new Date(tsStr) };
+  } catch (_) {}
+  return null;
+}
+
+function saveJasaCache(text: string): void {
+  try {
+    localStorage.setItem(JASA_CACHE_KEY, text);
+    localStorage.setItem(JASA_CACHE_TS_KEY, new Date().toISOString());
+  } catch (_) {}
 }
 
 /**
  * Hook to fetch and parse the Jasa Breakdown CSV.
- * Same retry logic as main dataset for IMPORTRANGE delays.
+ * Uses localStorage cache — only re-fetches when user triggers updateData().
  */
 export function useJasaDataset(): JasaDatasetState {
   const [data, setData] = useState<JasaParsedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
-  const doFetch = useCallback(() => {
+  const updateData = useCallback(() => setForceUpdate((t) => t + 1), []);
+
+  // On mount: try cache
+  useEffect(() => {
+    const cached = loadJasaCache();
+    if (cached) {
+      const parsed = parseJasaCSV(cached.text);
+      if (parsed.records.length > 0) {
+        setData(parsed);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+    }
+    setForceUpdate(1);
+  }, []);
+
+  // Network fetch
+  useEffect(() => {
+    if (forceUpdate === 0) return;
+
     const controller = new AbortController();
     let retryCount = 0;
     const MAX_RETRIES = 3;
@@ -180,7 +223,6 @@ export function useJasaDataset(): JasaDatasetState {
         .then((text) => {
           const parsed = parseJasaCSV(text);
 
-          // If no records parsed (IMPORTRANGE not resolved), retry
           if (parsed.records.length === 0 && retryCount < MAX_RETRIES) {
             retryCount++;
             console.warn(
@@ -191,7 +233,12 @@ export function useJasaDataset(): JasaDatasetState {
             return;
           }
 
+          if (parsed.records.length > 0) {
+            saveJasaCache(text);
+          }
+
           setData(parsed);
+          setFromCache(false);
           setLoading(false);
         })
         .catch((e) => {
@@ -203,15 +250,11 @@ export function useJasaDataset(): JasaDatasetState {
 
     setLoading(true);
     setError(null);
+    setFromCache(false);
     attempt();
 
     return () => controller.abort();
-  }, []);
+  }, [forceUpdate]);
 
-  useEffect(() => {
-    const cleanup = doFetch();
-    return cleanup;
-  }, [doFetch]);
-
-  return { data, loading, error };
+  return { data, loading, error, fromCache, updateData };
 }
