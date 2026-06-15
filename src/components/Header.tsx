@@ -80,6 +80,15 @@ export function Header({
             <h1 className="brand-gradient text-base font-bold md:text-lg">
               Pareto Omset
             </h1>
+            <img
+              src={`${import.meta.env.BASE_URL}header-logo.png`}
+              alt=""
+              aria-hidden="true"
+              className="header-logo-img hidden sm:block"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
           </div>
 
           <div className="flex items-center gap-2">
