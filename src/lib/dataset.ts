@@ -4,9 +4,20 @@ import { parseCSV, type ParsedDataset } from "./csvParser";
 export const DEFAULT_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXIuWnOk4-NoraIjEfqp0vDZCnKhqiklrskW_rfJxQatuPtohbwKtcz5TDTwuq7DW3HmzXAa_q2RqI/pub?gid=1311218554&single=true&output=csv";
 
+/**
+ * Hardcoded Apps Script Web App URL — primary data source.
+ * Server-side getValues() means IMPORTRANGE is always resolved before
+ * the JSON response is returned. No CDN cache, no "Loading..." races.
+ *
+ * Lock this in code (instead of letting users paste their own URL via
+ * a settings UI) so that the dashboard always points at the canonical
+ * deployment and end users can't accidentally change it.
+ */
+const HARDCODED_WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbzxoYH07Y74ybIRBZXI9vHVtc66NEDdeOx64uIr0J0IhNRCZ25RywQiQyQiGVYe2dlp/exec";
+
 const CACHE_KEY = "pareto-omset-cache";
 const CACHE_TS_KEY = "pareto-omset-cache-ts";
-const WEB_APP_URL_KEY = "pareto-webapp-url";
 
 /** Background revalidation kicks in when cache is older than this. */
 const STALE_AFTER_HOURS = 6;
@@ -32,23 +43,11 @@ export interface DatasetState {
   updateData: () => void;
 }
 
-/* ───── Web App URL helpers ───── */
+/* ───── Web App URL ───── */
 
-export function getWebAppUrl(): string | null {
-  try {
-    return localStorage.getItem(WEB_APP_URL_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function setWebAppUrl(url: string | null): void {
-  try {
-    if (url && url.trim()) localStorage.setItem(WEB_APP_URL_KEY, url.trim());
-    else localStorage.removeItem(WEB_APP_URL_KEY);
-  } catch {
-    /* ignore */
-  }
+/** Returns the canonical Web App URL (locked in code). */
+export function getWebAppUrl(): string {
+  return HARDCODED_WEB_APP_URL;
 }
 
 /* ───── Cache helpers ───── */
