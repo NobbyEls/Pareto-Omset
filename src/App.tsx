@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "./components/Header";
 import { Filters, type DeptFilter, type KotaFilter, type YearFilter } from "./components/Filters";
+import { Tabs, type TabKey } from "./components/Tabs";
 import { KpiCards } from "./components/KpiCards";
 import { SectionCard } from "./components/SectionCard";
 import { DataTable } from "./components/DataTable";
@@ -8,6 +9,7 @@ import { YearlyMatrix } from "./components/YearlyMatrix";
 import { BgDecoration } from "./components/BgDecoration";
 import { KotaBreakdown } from "./components/KotaBreakdown";
 import { JasaBreakdown } from "./components/JasaBreakdown";
+import { MonthlyAnalysis } from "./components/MonthlyAnalysis";
 import {
   EmptyState,
   ErrorState,
@@ -33,6 +35,7 @@ export default function App() {
   const [primaryYear, setPrimaryYear] = useState<YearFilter>("all");
   const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
   const [selectedDept, setSelectedDept] = useState<DeptFilter>("all");
+  const [activeTab, setActiveTab] = useState<TabKey>("yearly");
 
   useEffect(() => {
     if (!data) return;
@@ -118,6 +121,9 @@ export default function App() {
               onReset={handleReset}
             />
           )}
+          {ready && data && (
+            <Tabs active={activeTab} onChange={setActiveTab} />
+          )}
         </Header>
 
         <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8">
@@ -129,103 +135,119 @@ export default function App() {
 
           {ready && viewData && data && matrixYear != null && (
             <>
-              <KpiCards
-                data={viewData}
-                primaryYear={matrixYear}
-                selectedDepartments={visibleDepartments}
-              />
+              {activeTab === "yearly" ? (
+                <>
+                  <KpiCards
+                    data={viewData}
+                    primaryYear={matrixYear}
+                    selectedDepartments={visibleDepartments}
+                  />
 
-              <SectionCard
-                title={`Tren Bulanan • ${kotaLabel}`}
-                description={
-                  trendYears.length > 1
-                    ? `Total omset per bulan • ${trendYears.join(" vs ")}`
-                    : `Total omset per bulan • ${matrixYear}`
-                }
-                tag={{ label: "YoY · Trend", tone: "blue" }}
-              >
-                <MonthlyTrendChart
-                  data={viewData}
-                  selectedYears={trendYears}
-                  selectedDepartments={visibleDepartments}
+                  <SectionCard
+                    title={`Tren Bulanan • ${kotaLabel}`}
+                    description={
+                      trendYears.length > 1
+                        ? `Total omset per bulan • ${trendYears.join(" vs ")}`
+                        : `Total omset per bulan • ${matrixYear}`
+                    }
+                    tag={{ label: "YoY · Trend", tone: "blue" }}
+                  >
+                    <MonthlyTrendChart
+                      data={viewData}
+                      selectedYears={trendYears}
+                      selectedDepartments={visibleDepartments}
+                    />
+                  </SectionCard>
+
+                  <SectionCard
+                    title={`Matriks Bulanan ${matrixYear} • ${kotaLabel}`}
+                    description="Omset, MoM (Month-over-Month) & YoY (Year-over-Year) per departemen + total. MoM bulan Januari dihitung dari Desember tahun sebelumnya."
+                    tag={{ label: "Tahunan · Pivot", tone: "purple" }}
+                  >
+                    <YearlyMatrix data={viewData} year={matrixYear} />
+                  </SectionCard>
+
+                  <SectionCard
+                    title={`Performa per Kota • ${matrixYear}`}
+                    description="Total omset per cabang dengan share kontribusi dan YoY. Klik header untuk mengurutkan."
+                    tag={{ label: "Kota · Breakdown", tone: "amber" }}
+                  >
+                    <KotaBreakdown data={data} year={matrixYear} />
+                  </SectionCard>
+
+                  <JasaBreakdown
+                    selectedYear={primaryYear}
+                    selectedKota={selectedKota}
+                    selectedDept={selectedDept}
+                  />
+
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    <SectionCard
+                      title="Komposisi Departemen"
+                      description={`Distribusi omset ${matrixYear} per departemen • ${kotaLabel}`}
+                      tag={{ label: "Mix", tone: "pink" }}
+                    >
+                      <DepartmentDonut
+                        data={viewData}
+                        primaryYear={matrixYear}
+                        selectedDepartments={visibleDepartments}
+                      />
+                    </SectionCard>
+
+                    <SectionCard
+                      title="Stacked Bulanan per Departemen"
+                      description={`Kontribusi tiap departemen tiap bulan • ${kotaLabel}`}
+                      tag={{ label: "Stack", tone: "cyan" }}
+                    >
+                      <DepartmentStackedBar
+                        data={viewData}
+                        primaryYear={matrixYear}
+                        selectedDepartments={visibleDepartments}
+                      />
+                    </SectionCard>
+                  </div>
+
+                  <SectionCard
+                    title="Performa Departemen"
+                    description={`Tren bulanan setiap departemen di ${matrixYear} • ${kotaLabel}`}
+                    tag={{ label: "Lines", tone: "purple" }}
+                  >
+                    <DepartmentDeepDive
+                      data={viewData}
+                      primaryYear={matrixYear}
+                      selectedDepartments={visibleDepartments}
+                    />
+                  </SectionCard>
+
+                  {yoyAvailable && (
+                    <SectionCard
+                      title={`Year-over-Year • ${matrixYear} vs ${matrixYear - 1}`}
+                      description={`Bandingkan omset bulanan dan persentase pertumbuhan tahunan • ${kotaLabel}`}
+                      tag={{ label: "YoY · Growth", tone: "green" }}
+                    >
+                      <YoYChart
+                        data={viewData}
+                        primaryYear={matrixYear}
+                        selectedDepartments={visibleDepartments}
+                      />
+                    </SectionCard>
+                  )}
+
+                  <DataTable
+                    data={viewData}
+                    selectedYears={primaryYear === "all" ? data.years : [primaryYear]}
+                    selectedDepartments={visibleDepartments}
+                  />
+                </>
+              ) : (
+                <MonthlyAnalysis
+                  data={data}
+                  year={matrixYear}
+                  selectedKota={selectedKota}
+                  selectedDept={selectedDept}
+                  visibleDepartments={visibleDepartments}
                 />
-              </SectionCard>
-
-              <SectionCard
-                title={`Matriks Bulanan ${matrixYear} • ${kotaLabel}`}
-                description="Omset, MoM (Month-over-Month) & YoY (Year-over-Year) per departemen + total. MoM bulan Januari dihitung dari Desember tahun sebelumnya."
-                tag={{ label: "Tahunan · Pivot", tone: "purple" }}
-              >
-                <YearlyMatrix data={viewData} year={matrixYear} />
-              </SectionCard>
-
-              <SectionCard
-                title={`Performa per Kota • ${matrixYear}`}
-                description="Total omset per cabang dengan share kontribusi dan YoY. Klik header untuk mengurutkan."
-                tag={{ label: "Kota · Breakdown", tone: "amber" }}
-              >
-                <KotaBreakdown data={data} year={matrixYear} />
-              </SectionCard>
-
-              <JasaBreakdown />
-
-              <div className="grid gap-5 xl:grid-cols-2">
-                <SectionCard
-                  title="Komposisi Departemen"
-                  description={`Distribusi omset ${matrixYear} per departemen • ${kotaLabel}`}
-                  tag={{ label: "Mix", tone: "pink" }}
-                >
-                  <DepartmentDonut
-                    data={viewData}
-                    primaryYear={matrixYear}
-                    selectedDepartments={visibleDepartments}
-                  />
-                </SectionCard>
-
-                <SectionCard
-                  title="Stacked Bulanan per Departemen"
-                  description={`Kontribusi tiap departemen tiap bulan • ${kotaLabel}`}
-                  tag={{ label: "Stack", tone: "cyan" }}
-                >
-                  <DepartmentStackedBar
-                    data={viewData}
-                    primaryYear={matrixYear}
-                    selectedDepartments={visibleDepartments}
-                  />
-                </SectionCard>
-              </div>
-
-              <SectionCard
-                title="Performa Departemen"
-                description={`Tren bulanan setiap departemen di ${matrixYear} • ${kotaLabel}`}
-                tag={{ label: "Lines", tone: "purple" }}
-              >
-                <DepartmentDeepDive
-                  data={viewData}
-                  primaryYear={matrixYear}
-                  selectedDepartments={visibleDepartments}
-                />
-              </SectionCard>
-
-              {yoyAvailable && (
-                <SectionCard
-                  title={`Year-over-Year • ${matrixYear} vs ${matrixYear - 1}`}
-                  description={`Bandingkan omset bulanan dan persentase pertumbuhan tahunan • ${kotaLabel}`}
-                  tag={{ label: "YoY · Growth", tone: "green" }}
-                >
-                  <YoYChart
-                    data={viewData}
-                    primaryYear={matrixYear}
-                    selectedDepartments={visibleDepartments}
-                  />
-                </SectionCard>
               )}
-
-              <DataTable
-                data={viewData}
-                selectedYears={primaryYear === "all" ? data.years : [primaryYear]}
-                selectedDepartments={visibleDepartments}
-              />
 
               <footer
                 className="pt-2 pb-6 text-center text-xs"

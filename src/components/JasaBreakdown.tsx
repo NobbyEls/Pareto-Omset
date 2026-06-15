@@ -10,9 +10,30 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { useJasaDataset } from "../lib/jasaDataset";
+import {
+  useJasaDataset,
+  aggregateJasaRecords,
+  KOTA_CODE_TO_NAME,
+} from "../lib/jasaDataset";
 import { formatIDR, formatIDRCompact } from "../lib/format";
 import { SectionCard } from "./SectionCard";
+import type { DeptFilter, KotaFilter, YearFilter } from "./Filters";
+import { KOTA_NAMES } from "../lib/csvParser";
+
+interface JasaBreakdownProps {
+  selectedYear: YearFilter;
+  selectedKota: KotaFilter;
+  selectedDept: DeptFilter;
+}
+
+/**
+ * Year used as the implicit baseline for "Jasa Part" and "Jasa Service".
+ * The breakdown CSV doesn't carry a year column, so we treat its rows as
+ * belonging to this year. When the user filters to a different year, those
+ * two categories are dropped (only "Jasa Sales" — which DOES have a year —
+ * remains).
+ */
+const PART_SERVICE_BASELINE_YEAR = 2026;
 
 /* ─── Color palette for Jasa ──────────────────────────── */
 const JASA_PART_COLOR = "#f59e0b"; // amber
@@ -71,6 +92,8 @@ function KotaRow({
   total,
   share,
   maxShare,
+  showPart,
+  showService,
 }: {
   cabang: string;
   jasaPart: number;
@@ -79,6 +102,8 @@ function KotaRow({
   total: number;
   share: number;
   maxShare: number;
+  showPart: boolean;
+  showService: boolean;
 }) {
   const gradient = KOTA_GRADIENTS[cabang] || "linear-gradient(135deg, #6366f1, #06b6d4)";
   const barWidth = maxShare > 0 ? (share / maxShare) * 100 : 0;
@@ -104,18 +129,28 @@ function KotaRow({
           </div>
         </div>
       </td>
-      <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_PART_COLOR }}>
-        {formatIDRCompact(jasaPart)}
-        <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
-          ({partPct}%)
-        </span>
-      </td>
-      <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_SERVICE_COLOR }}>
-        {formatIDRCompact(jasaService)}
-        <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
-          ({servicePct}%)
-        </span>
-      </td>
+      {showPart && (
+        <td
+          className="px-3 py-3 text-right font-mono tabular-nums"
+          style={{ color: JASA_PART_COLOR }}
+        >
+          {formatIDRCompact(jasaPart)}
+          <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
+            ({partPct}%)
+          </span>
+        </td>
+      )}
+      {showService && (
+        <td
+          className="px-3 py-3 text-right font-mono tabular-nums"
+          style={{ color: JASA_SERVICE_COLOR }}
+        >
+          {formatIDRCompact(jasaService)}
+          <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
+            ({servicePct}%)
+          </span>
+        </td>
+      )}
       <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_SALES_COLOR }}>
         {formatIDRCompact(jasaSales)}
         <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
@@ -143,18 +178,52 @@ function KotaRow({
 }
 
 /* ─── Main Component ─────────────────────────────────── */
-export function JasaBreakdown() {
-  const { data, loading, error } = useJasaDataset();
+export function JasaBreakdown({
+  selectedYear,
+  selectedKota,
+  selectedDept,
+}: JasaBreakdownProps) {
+  // Hook calls always run first to satisfy rules of hooks; we decide
+  // whether to render afterwards.
+  const { data: rawData, loading, error } = useJasaDataset();
 
-  const chartData = useMemo(() => {
-    if (!data) return [];
-    return data.byMonth.map((m) => ({
-      name: m.bulan.slice(0, 3),
-      "Jasa Part": m.jasaPart,
-      "Jasa Service": m.jasaService,
-      "Jasa Sales": m.jasaSales,
-    }));
-  }, [data]);
+  // Should we keep Jasa Part / Jasa Service rows for the active year filter?
+  // They have no year field, so we treat them as belonging to PART_SERVICE_BASELINE_YEAR.
+  const includePartService =
+    selectedYear === "all" || selectedYear === PART_SERVICE_BASELINE_YEAR;
+
+  // Re-aggregate from raw records using current filters.
+  const filtered = useMemo(() => {
+    if (!rawData) return null;
+
+    const targetCabang =
+      selectedKota === "all" ? null : KOTA_CODE_TO_NAME[selectedKota];
+
+    const filteredRecords = includePartService
+      ? rawData.records.filter(
+          (r) => !targetCabang || r.cabang === targetCabang
+        )
+      : [];
+
+    const filteredSales = rawData.jasaSalesRecords.filter((r) => {
+      if (targetCabang && r.cabang !== targetCabang) return false;
+      if (selectedYear !== "all" && r.year !== selectedYear) return false;
+      return true;
+    });
+
+    const agg = aggregateJasaRecords(filteredRecords, filteredSales);
+    return { ...agg, hasAny: filteredRecords.length + filteredSales.length > 0 };
+  }, [rawData, selectedYear, selectedKota, includePartService]);
+
+  // Hide section entirely when the dept filter excludes JASA.
+  if (selectedDept !== "all" && selectedDept !== "JASA") {
+    return null;
+  }
+
+  // Build human-readable filter context for titles.
+  const yearLabel = selectedYear === "all" ? "Semua Tahun" : String(selectedYear);
+  const kotaLabel =
+    selectedKota === "all" ? "Semua Kota" : KOTA_NAMES[selectedKota];
 
   if (loading) {
     return (
@@ -170,7 +239,7 @@ export function JasaBreakdown() {
     );
   }
 
-  if (error || !data || data.records.length === 0) {
+  if (error || !rawData || rawData.records.length === 0) {
     return (
       <SectionCard
         title="Breakdown Departemen Jasa"
@@ -187,18 +256,66 @@ export function JasaBreakdown() {
     );
   }
 
-  const maxShare = Math.max(...data.byKota.map((k) => k.share), 1);
-  const totalPart = data.byKota.reduce((s, k) => s + k.jasaPart, 0);
-  const totalService = data.byKota.reduce((s, k) => s + k.jasaService, 0);
-  const totalSales = data.byKota.reduce((s, k) => s + k.jasaSales, 0);
-  const partPctGlobal = data.grandTotal > 0 ? ((totalPart / data.grandTotal) * 100).toFixed(1) : "0";
-  const servicePctGlobal = data.grandTotal > 0 ? ((totalService / data.grandTotal) * 100).toFixed(1) : "0";
-  const salesPctGlobal = data.grandTotal > 0 ? ((totalSales / data.grandTotal) * 100).toFixed(1) : "0";
+  // After loading + raw guards, filtered must be non-null — but TS doesn't
+  // know that, so guard explicitly.
+  if (!filtered || !filtered.hasAny) {
+    return (
+      <SectionCard
+        title={`Breakdown Departemen Jasa • ${kotaLabel} • ${yearLabel}`}
+        description="Tidak ada data Jasa untuk kombinasi filter ini."
+        tag={{ label: "Jasa", tone: "amber" }}
+      >
+        <div
+          className="flex h-32 items-center justify-center text-sm"
+          style={{ color: "var(--text-dim)" }}
+        >
+          Tidak ada data Jasa untuk filter saat ini.
+        </div>
+      </SectionCard>
+    );
+  }
+
+  const chartData = filtered.byMonth.map((m) => ({
+    name: m.bulan.slice(0, 3),
+    "Jasa Part": m.jasaPart,
+    "Jasa Service": m.jasaService,
+    "Jasa Sales": m.jasaSales,
+  }));
+
+  const maxShare = Math.max(...filtered.byKota.map((k) => k.share), 1);
+  const totalPart = filtered.byKota.reduce((s, k) => s + k.jasaPart, 0);
+  const totalService = filtered.byKota.reduce((s, k) => s + k.jasaService, 0);
+  const totalSales = filtered.byKota.reduce((s, k) => s + k.jasaSales, 0);
+  const partPctGlobal =
+    filtered.grandTotal > 0
+      ? ((totalPart / filtered.grandTotal) * 100).toFixed(1)
+      : "0";
+  const servicePctGlobal =
+    filtered.grandTotal > 0
+      ? ((totalService / filtered.grandTotal) * 100).toFixed(1)
+      : "0";
+  const salesPctGlobal =
+    filtered.grandTotal > 0
+      ? ((totalSales / filtered.grandTotal) * 100).toFixed(1)
+      : "0";
+
+  // Decide which Part/Service columns/cards to show. When the year filter
+  // excludes them entirely we skip them; otherwise we show whatever was
+  // aggregated (possibly zero if no records matched the kota filter).
+  const showPart = includePartService;
+  const showService = includePartService;
+
+  // Number of cards to show in the KPI grid (max 4: total + part + service + sales).
+  const visibleKpis = 1 + (showPart ? 1 : 0) + (showService ? 1 : 0) + 1;
 
   return (
     <div className="space-y-5">
       {/* KPI summary cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${
+          visibleKpis >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
+        }`}
+      >
         <div className="glass-card flex items-center gap-3 p-4">
           <div
             className="grid h-10 w-10 place-items-center rounded-xl"
@@ -206,53 +323,72 @@ export function JasaBreakdown() {
           >
             <Wrench className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-xs" style={{ color: "var(--text-dim)" }}>
-              Total Jasa (Jan-Jun)
+              Total Jasa • {yearLabel}
             </div>
-            <div className="font-mono text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-              {formatIDRCompact(data.grandTotal)}
+            <div
+              className="font-mono text-lg font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {formatIDRCompact(filtered.grandTotal)}
             </div>
           </div>
         </div>
-        <div className="glass-card flex items-center gap-3 p-4">
-          <div
-            className="grid h-10 w-10 place-items-center rounded-xl"
-            style={{ background: JASA_SERVICE_COLOR }}
-          >
-            <TrendingUp className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <div className="text-xs" style={{ color: "var(--text-dim)" }}>
-              Jasa Service
+        {showService && (
+          <div className="glass-card flex items-center gap-3 p-4">
+            <div
+              className="grid h-10 w-10 place-items-center rounded-xl"
+              style={{ background: JASA_SERVICE_COLOR }}
+            >
+              <TrendingUp className="h-5 w-5 text-white" />
             </div>
-            <div className="font-mono text-lg font-bold" style={{ color: JASA_SERVICE_COLOR }}>
-              {formatIDRCompact(totalService)}
-              <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-muted)" }}>
-                ({servicePctGlobal}%)
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="glass-card flex items-center gap-3 p-4">
-          <div
-            className="grid h-10 w-10 place-items-center rounded-xl"
-            style={{ background: JASA_PART_COLOR }}
-          >
-            <TrendingUp className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <div className="text-xs" style={{ color: "var(--text-dim)" }}>
-              Jasa Part
-            </div>
-            <div className="font-mono text-lg font-bold" style={{ color: JASA_PART_COLOR }}>
-              {formatIDRCompact(totalPart)}
-              <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-muted)" }}>
-                ({partPctGlobal}%)
-              </span>
+            <div className="min-w-0">
+              <div className="text-xs" style={{ color: "var(--text-dim)" }}>
+                Jasa Service
+              </div>
+              <div
+                className="font-mono text-lg font-bold"
+                style={{ color: JASA_SERVICE_COLOR }}
+              >
+                {formatIDRCompact(totalService)}
+                <span
+                  className="ml-1 text-xs font-normal"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  ({servicePctGlobal}%)
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+        {showPart && (
+          <div className="glass-card flex items-center gap-3 p-4">
+            <div
+              className="grid h-10 w-10 place-items-center rounded-xl"
+              style={{ background: JASA_PART_COLOR }}
+            >
+              <TrendingUp className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs" style={{ color: "var(--text-dim)" }}>
+                Jasa Part
+              </div>
+              <div
+                className="font-mono text-lg font-bold"
+                style={{ color: JASA_PART_COLOR }}
+              >
+                {formatIDRCompact(totalPart)}
+                <span
+                  className="ml-1 text-xs font-normal"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  ({partPctGlobal}%)
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="glass-card flex items-center gap-3 p-4">
           <div
             className="grid h-10 w-10 place-items-center rounded-xl"
@@ -260,13 +396,19 @@ export function JasaBreakdown() {
           >
             <TrendingUp className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-xs" style={{ color: "var(--text-dim)" }}>
               Jasa Sales
             </div>
-            <div className="font-mono text-lg font-bold" style={{ color: JASA_SALES_COLOR }}>
+            <div
+              className="font-mono text-lg font-bold"
+              style={{ color: JASA_SALES_COLOR }}
+            >
               {formatIDRCompact(totalSales)}
-              <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-muted)" }}>
+              <span
+                className="ml-1 text-xs font-normal"
+                style={{ color: "var(--text-muted)" }}
+              >
                 ({salesPctGlobal}%)
               </span>
             </div>
@@ -276,8 +418,12 @@ export function JasaBreakdown() {
 
       {/* Stacked bar chart - monthly trend */}
       <SectionCard
-        title="Tren Bulanan Jasa"
-        description="Perbandingan Jasa Part vs Jasa Service vs Jasa Sales per bulan"
+        title={`Tren Bulanan Jasa • ${kotaLabel} • ${yearLabel}`}
+        description={
+          includePartService
+            ? "Perbandingan Jasa Part vs Jasa Service vs Jasa Sales per bulan"
+            : `Jasa Sales per bulan • Part / Service hanya tersedia untuk tahun ${PART_SERVICE_BASELINE_YEAR}`
+        }
         tag={{ label: "Jasa - Tren", tone: "amber" }}
       >
         <div className="h-72">
@@ -300,18 +446,22 @@ export function JasaBreakdown() {
               <Legend
                 wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }}
               />
-              <Bar
-                dataKey="Jasa Service"
-                stackId="a"
-                fill={JASA_SERVICE_COLOR}
-                radius={[0, 0, 0, 0]}
-              />
-              <Bar
-                dataKey="Jasa Part"
-                stackId="a"
-                fill={JASA_PART_COLOR}
-                radius={[0, 0, 0, 0]}
-              />
+              {showService && (
+                <Bar
+                  dataKey="Jasa Service"
+                  stackId="a"
+                  fill={JASA_SERVICE_COLOR}
+                  radius={[0, 0, 0, 0]}
+                />
+              )}
+              {showPart && (
+                <Bar
+                  dataKey="Jasa Part"
+                  stackId="a"
+                  fill={JASA_PART_COLOR}
+                  radius={[0, 0, 0, 0]}
+                />
+              )}
               <Bar
                 dataKey="Jasa Sales"
                 stackId="a"
@@ -325,8 +475,8 @@ export function JasaBreakdown() {
 
       {/* Table breakdown per kota */}
       <SectionCard
-        title="Breakdown per Kota"
-        description="Detail kontribusi Jasa Part, Jasa Service, dan Jasa Sales per cabang (Jan-Jun)"
+        title={`Breakdown per Kota • ${kotaLabel} • ${yearLabel}`}
+        description="Detail kontribusi Jasa Part, Jasa Service, dan Jasa Sales per cabang"
         tag={{ label: "Jasa - Kota", tone: "pink" }}
       >
         <div className="overflow-x-auto rounded-xl">
@@ -341,27 +491,34 @@ export function JasaBreakdown() {
           >
             <thead>
               <tr>
-                {["Kota", "Jasa Part", "Jasa Service", "Jasa Sales", "Total", "% Share"].map(
-                  (col, i) => (
-                    <th
-                      key={col}
-                      className={`px-3 py-2.5 text-xs font-bold uppercase tracking-wider ${
-                        i === 0 ? "text-left" : "text-right"
-                      }`}
-                      style={{
-                        color: "var(--text-dim)",
-                        background: "rgba(99, 102, 241, 0.08)",
-                        borderBottom: "1px solid var(--border-subtle)",
-                      }}
-                    >
-                      {col}
-                    </th>
-                  )
-                )}
+                {(
+                  [
+                    "Kota",
+                    ...(showPart ? ["Jasa Part"] : []),
+                    ...(showService ? ["Jasa Service"] : []),
+                    "Jasa Sales",
+                    "Total",
+                    "% Share",
+                  ] as string[]
+                ).map((col, i) => (
+                  <th
+                    key={col}
+                    className={`px-3 py-2.5 text-xs font-bold uppercase tracking-wider ${
+                      i === 0 ? "text-left" : "text-right"
+                    }`}
+                    style={{
+                      color: "var(--text-dim)",
+                      background: "rgba(99, 102, 241, 0.08)",
+                      borderBottom: "1px solid var(--border-subtle)",
+                    }}
+                  >
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {data.byKota.map((row) => (
+              {filtered.byKota.map((row) => (
                 <KotaRow
                   key={row.cabang}
                   cabang={row.cabang}
@@ -371,6 +528,8 @@ export function JasaBreakdown() {
                   total={row.total}
                   share={row.share}
                   maxShare={maxShare}
+                  showPart={showPart}
+                  showService={showService}
                 />
               ))}
               {/* Grand total row */}
@@ -381,18 +540,22 @@ export function JasaBreakdown() {
                 >
                   Grand Total
                 </td>
-                <td
-                  className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                  style={{ color: JASA_PART_COLOR }}
-                >
-                  {formatIDRCompact(totalPart)}
-                </td>
-                <td
-                  className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                  style={{ color: JASA_SERVICE_COLOR }}
-                >
-                  {formatIDRCompact(totalService)}
-                </td>
+                {showPart && (
+                  <td
+                    className="px-3 py-3 text-right font-mono font-bold tabular-nums"
+                    style={{ color: JASA_PART_COLOR }}
+                  >
+                    {formatIDRCompact(totalPart)}
+                  </td>
+                )}
+                {showService && (
+                  <td
+                    className="px-3 py-3 text-right font-mono font-bold tabular-nums"
+                    style={{ color: JASA_SERVICE_COLOR }}
+                  >
+                    {formatIDRCompact(totalService)}
+                  </td>
+                )}
                 <td
                   className="px-3 py-3 text-right font-mono font-bold tabular-nums"
                   style={{ color: JASA_SALES_COLOR }}
@@ -403,7 +566,7 @@ export function JasaBreakdown() {
                   className="px-3 py-3 text-right font-mono font-bold tabular-nums"
                   style={{ color: "#fcd34d" }}
                 >
-                  {formatIDR(data.grandTotal)}
+                  {formatIDR(filtered.grandTotal)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono tabular-nums"

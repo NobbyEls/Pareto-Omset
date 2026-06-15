@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { parseIDNumber, MONTHS_ID, MONTH_INDEX, type MonthId } from "./format";
 import { getWebAppUrl } from "./dataset";
+import type { KotaCode } from "./csvParser";
 
 /**
  * Jasa Breakdown CSV URL (gid=1300836220).
@@ -59,9 +60,11 @@ export interface JasaParsedData {
 
 /**
  * Mapping from kota codes (G-XXX) in the main database to the city names
- * used in the Jasa CSV sheet.
+ * used in the Jasa CSV sheet. Exported so other modules (e.g. the
+ * filter-aware Jasa breakdown) can convert a `KotaCode` filter selection
+ * into the matching `cabang` string.
  */
-const KOTA_CODE_TO_NAME: Record<string, string> = {
+export const KOTA_CODE_TO_NAME: Record<KotaCode, string> = {
   "G-YGY": "YOGYAKARTA",
   "G-SLO": "SOLO",
   "G-PWT": "PURWOKERTO",
@@ -116,7 +119,7 @@ export function parseJasaSalesFromDatabase(database: string[][]): JasaSalesRecor
       if (monthIndex == null) continue;
 
       // Map kota code to name
-      const cabang = KOTA_CODE_TO_NAME[kotaRaw];
+      const cabang = (KOTA_CODE_TO_NAME as Record<string, string | undefined>)[kotaRaw];
       if (!cabang) continue;
 
       const amount = parseIDNumber(amountRaw);
@@ -256,6 +259,110 @@ export function parseJasaCSV(text: string, jasaSalesRecords: JasaSalesRecord[] =
   });
 
   return { records, jasaSalesRecords, cabangList: allCabangList, months: allMonths, byKota, byMonth, grandTotal };
+}
+
+/**
+ * Aggregate already-parsed `JasaRecord[]` + `JasaSalesRecord[]` arrays into
+ * the same `byKota` / `byMonth` / `grandTotal` shape used by `parseJasaCSV`.
+ * Used by the filter-aware breakdown view: the raw records are filtered
+ * (by year / kota) first and then re-aggregated through this helper so
+ * every chart and table updates in lock-step with the global filter bar.
+ */
+export function aggregateJasaRecords(
+  records: JasaRecord[],
+  jasaSalesRecords: JasaSalesRecord[]
+): {
+  byKota: JasaKotaSummary[];
+  byMonth: JasaMonthSummary[];
+  cabangList: string[];
+  months: MonthId[];
+  grandTotal: number;
+} {
+  const cabangSet = new Set<string>();
+  const monthSet = new Set<MonthId>();
+
+  for (const r of records) {
+    cabangSet.add(r.cabang);
+    monthSet.add(r.bulan);
+  }
+  for (const r of jasaSalesRecords) {
+    cabangSet.add(r.cabang);
+    monthSet.add(r.bulan);
+  }
+
+  const cabangList = Array.from(cabangSet).sort();
+  const months = MONTHS_ID.filter((m) => monthSet.has(m));
+
+  const kotaMap = new Map<
+    string,
+    { jasaPart: number; jasaService: number; jasaSales: number }
+  >();
+  for (const r of records) {
+    const entry =
+      kotaMap.get(r.cabang) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    if (r.type === "JASA PART") entry.jasaPart += r.amount;
+    else entry.jasaService += r.amount;
+    kotaMap.set(r.cabang, entry);
+  }
+  for (const r of jasaSalesRecords) {
+    const entry =
+      kotaMap.get(r.cabang) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    entry.jasaSales += r.amount;
+    kotaMap.set(r.cabang, entry);
+  }
+
+  const grandTotal =
+    records.reduce((s, r) => s + r.amount, 0) +
+    jasaSalesRecords.reduce((s, r) => s + r.amount, 0);
+
+  const byKota: JasaKotaSummary[] = cabangList
+    .map((cabang) => {
+      const entry =
+        kotaMap.get(cabang) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+      const total = entry.jasaPart + entry.jasaService + entry.jasaSales;
+      return {
+        cabang,
+        jasaPart: entry.jasaPart,
+        jasaService: entry.jasaService,
+        jasaSales: entry.jasaSales,
+        total,
+        share: grandTotal > 0 ? (total / grandTotal) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  const monthMap = new Map<
+    MonthId,
+    { jasaPart: number; jasaService: number; jasaSales: number }
+  >();
+  for (const r of records) {
+    const entry =
+      monthMap.get(r.bulan) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    if (r.type === "JASA PART") entry.jasaPart += r.amount;
+    else entry.jasaService += r.amount;
+    monthMap.set(r.bulan, entry);
+  }
+  for (const r of jasaSalesRecords) {
+    const entry =
+      monthMap.get(r.bulan) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    entry.jasaSales += r.amount;
+    monthMap.set(r.bulan, entry);
+  }
+
+  const byMonth: JasaMonthSummary[] = months.map((bulan) => {
+    const entry =
+      monthMap.get(bulan) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    return {
+      bulan,
+      bulanIndex: MONTHS_ID.indexOf(bulan),
+      jasaPart: entry.jasaPart,
+      jasaService: entry.jasaService,
+      jasaSales: entry.jasaSales,
+      total: entry.jasaPart + entry.jasaService + entry.jasaSales,
+    };
+  });
+
+  return { byKota, byMonth, cabangList, months, grandTotal };
 }
 
 export interface JasaDatasetState {
