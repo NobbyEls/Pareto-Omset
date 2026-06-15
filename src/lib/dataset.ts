@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { parseCSV, type ParsedDataset } from "./csvParser";
 
 export const DEFAULT_CSV_URL =
@@ -6,144 +6,296 @@ export const DEFAULT_CSV_URL =
 
 const CACHE_KEY = "pareto-omset-cache";
 const CACHE_TS_KEY = "pareto-omset-cache-ts";
+const WEB_APP_URL_KEY = "pareto-webapp-url";
+
+/** Background revalidation kicks in when cache is older than this. */
+const STALE_AFTER_HOURS = 6;
+
+/** "Update Data" retries this many times with this delay before giving up. */
+const MAX_RETRIES = 6;
+const RETRY_DELAY = 4000;
+
+/** Data is "complete enough" if it has at least this many years. */
+const MIN_VALID_YEARS = 2;
 
 export interface DatasetState {
   data: ParsedDataset | null;
+  /** True only on the very first load when no cache exists. */
   loading: boolean;
+  /** True while a background or manual revalidation is in flight. */
+  refreshing: boolean;
   error: string | null;
   fetchedAt: Date | null;
-  /** True when using cached data (not a fresh fetch). */
   fromCache: boolean;
-  /** Force-fetch fresh data from Google Sheets (bypasses cache). */
+  /** Cache is older than STALE_AFTER_HOURS — UI may want to surface this. */
+  isStale: boolean;
   updateData: () => void;
 }
 
-/** Try to load cached CSV text from localStorage. */
+/* ───── Web App URL helpers ───── */
+
+export function getWebAppUrl(): string | null {
+  try {
+    return localStorage.getItem(WEB_APP_URL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setWebAppUrl(url: string | null): void {
+  try {
+    if (url && url.trim()) localStorage.setItem(WEB_APP_URL_KEY, url.trim());
+    else localStorage.removeItem(WEB_APP_URL_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/* ───── Cache helpers ───── */
+
 function loadCache(): { text: string; ts: Date } | null {
   try {
     const text = localStorage.getItem(CACHE_KEY);
     const tsStr = localStorage.getItem(CACHE_TS_KEY);
-    if (text && tsStr) {
-      return { text, ts: new Date(tsStr) };
-    }
-  } catch (_) {
-    // localStorage unavailable or corrupt
+    if (text && tsStr) return { text, ts: new Date(tsStr) };
+  } catch {
+    /* ignore */
   }
   return null;
 }
 
-/** Save CSV text to localStorage with timestamp. */
 function saveCache(text: string): void {
   try {
     localStorage.setItem(CACHE_KEY, text);
     localStorage.setItem(CACHE_TS_KEY, new Date().toISOString());
-  } catch (_) {
-    // quota exceeded or unavailable — ignore
+  } catch {
+    /* quota exceeded — ignore */
   }
 }
 
+/* ───── Fetch logic ───── */
+
+interface FetchResult {
+  text: string;
+  parsed: ParsedDataset;
+}
+
 /**
- * Dataset hook with localStorage caching.
- *
- * Behavior:
- * 1. On first load: try localStorage cache → if valid, use it instantly (no network)
- * 2. User clicks "Update Data" → fresh-fetch from Google Sheets, save to cache
- * 3. If no cache exists on first load → auto-fetch from network
- * 4. Retry logic for IMPORTRANGE delays (up to 3 retries with 3s delay)
+ * Fetch from the Apps Script Web App (returns JSON) and convert
+ * the database 2D array back to CSV-like text so the existing parser
+ * can consume it. JSON path resolves IMPORTRANGE server-side, so it's
+ * always complete (no "Loading...").
  */
+async function fetchFromWebApp(
+  url: string,
+  signal: AbortSignal
+): Promise<FetchResult> {
+  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+    signal,
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Web App HTTP ${res.status}`);
+  const json = (await res.json()) as { database?: string[][]; error?: string };
+  if (json.error) throw new Error(`Web App error: ${json.error}`);
+  if (!json.database) throw new Error("Web App missing 'database' field");
+
+  // Convert 2D array → CSV text (escape any commas/quotes per RFC 4180-ish).
+  const csvText = json.database
+    .map((row) =>
+      row
+        .map((cell) => {
+          const s = cell == null ? "" : String(cell);
+          if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+            return '"' + s.replace(/"/g, '""') + '"';
+          }
+          return s;
+        })
+        .join(",")
+    )
+    .join("\n");
+
+  return { text: csvText, parsed: parseCSV(csvText) };
+}
+
+/** Plain CSV fetch (Google's published CSV endpoint). */
+async function fetchFromCsv(signal: AbortSignal): Promise<FetchResult> {
+  const url = `${DEFAULT_CSV_URL}${
+    DEFAULT_CSV_URL.includes("?") ? "&" : "?"
+  }_=${Date.now()}`;
+  const res = await fetch(url, { signal, cache: "no-store" });
+  if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
+  const text = await res.text();
+  return { text, parsed: parseCSV(text) };
+}
+
+/** Single attempt — Web App if configured, else CSV. */
+async function fetchOnce(signal: AbortSignal): Promise<FetchResult> {
+  const webApp = getWebAppUrl();
+  if (webApp) {
+    try {
+      return await fetchFromWebApp(webApp, signal);
+    } catch (e) {
+      console.warn("[Pareto] Web App fetch failed, falling back to CSV:", e);
+      return await fetchFromCsv(signal);
+    }
+  }
+  return await fetchFromCsv(signal);
+}
+
+/**
+ * Aggressive fetch: retry up to MAX_RETRIES until we get data with at least
+ * MIN_VALID_YEARS years. Returns the BEST attempt seen (most years) when
+ * exhausted.
+ */
+async function aggressiveFetch(
+  signal: AbortSignal,
+  onAttempt?: (n: number, max: number) => void
+): Promise<FetchResult> {
+  let best: FetchResult | null = null;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    onAttempt?.(attempt, MAX_RETRIES);
+    try {
+      const result = await fetchOnce(signal);
+      if (result.parsed.years.length >= MIN_VALID_YEARS) {
+        return result; // good enough
+      }
+      // Track the best (most years) result so far.
+      if (
+        !best ||
+        result.parsed.years.length > best.parsed.years.length ||
+        result.parsed.records.length > best.parsed.records.length
+      ) {
+        best = result;
+      }
+      console.warn(
+        `[Pareto] Attempt ${attempt}/${MAX_RETRIES}: only ${result.parsed.years.length} year(s), retrying...`
+      );
+    } catch (e) {
+      if ((e as Error).name === "AbortError") throw e;
+      lastError = e as Error;
+      console.warn(`[Pareto] Attempt ${attempt}/${MAX_RETRIES} failed:`, e);
+    }
+    if (attempt < MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY));
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+    }
+  }
+
+  if (best) return best;
+  throw lastError ?? new Error("Gagal memuat data setelah beberapa percobaan");
+}
+
+/* ───── The hook ───── */
+
 export function useDataset(): DatasetState {
   const [data, setData] = useState<ParsedDataset | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
   const [fromCache, setFromCache] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(0);
+  const [isStale, setIsStale] = useState(false);
+  const dataRef = useRef<ParsedDataset | null>(null);
+  dataRef.current = data;
 
-  const updateData = useCallback(() => setForceUpdate((t) => t + 1), []);
+  const runFetch = useCallback((isInitial: boolean) => {
+    const controller = new AbortController();
+    if (isInitial) setLoading(true);
+    setRefreshing(true);
+    setError(null);
 
-  // On mount: try cache first
+    aggressiveFetch(controller.signal)
+      .then(({ text, parsed }) => {
+        // Only persist & swap if this is "better" than what we already have.
+        const currentYears = dataRef.current?.years.length ?? 0;
+        const isBetter =
+          parsed.years.length > currentYears ||
+          (parsed.years.length === currentYears && parsed.records.length > 0);
+
+        if (isBetter && parsed.records.length > 0) {
+          if (parsed.years.length >= MIN_VALID_YEARS) {
+            saveCache(text);
+            console.log(
+              `[Pareto] Cache updated: ${parsed.years.length} years, ${parsed.records.length} records`
+            );
+          }
+          setData(parsed);
+          setFetchedAt(new Date());
+          setFromCache(false);
+          setIsStale(false);
+        } else if (!dataRef.current) {
+          // No cache and we got something — show whatever we got even if incomplete.
+          setData(parsed);
+          setFetchedAt(new Date());
+          setFromCache(false);
+        }
+      })
+      .catch((e) => {
+        if ((e as Error).name === "AbortError") return;
+        // Only surface error if we have nothing to show.
+        if (!dataRef.current) {
+          setError((e as Error).message || "Gagal memuat data");
+        } else {
+          console.warn("[Pareto] Background refresh failed:", e);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  // On mount: load cache instantly, then revalidate in background if stale.
   useEffect(() => {
     const cached = loadCache();
+    let scheduledFetch = false;
+
     if (cached) {
       const parsed = parseCSV(cached.text);
-      if (parsed.years.length > 0 && parsed.records.length > 0) {
+      if (parsed.records.length > 0 && parsed.years.length > 0) {
         setData(parsed);
         setFetchedAt(cached.ts);
         setFromCache(true);
         setLoading(false);
-        console.log(
-          `[Pareto] Loaded from cache (${parsed.years.length} years, ` +
-            `${parsed.records.length} records, cached at ${cached.ts.toLocaleString()})`
-        );
+
+        const ageHours = (Date.now() - cached.ts.getTime()) / 3_600_000;
+        const stale = ageHours > STALE_AFTER_HOURS;
+        setIsStale(stale);
+
+        // Stale-while-revalidate: trigger background refresh if old.
+        if (stale) {
+          console.log(
+            `[Pareto] Cache is ${ageHours.toFixed(1)}h old, refreshing in background...`
+          );
+          scheduledFetch = true;
+          return runFetch(false);
+        }
         return;
       }
     }
-    // No valid cache — trigger network fetch
-    setForceUpdate(1);
-  }, []);
 
-  // Network fetch (triggered by forceUpdate > 0)
-  useEffect(() => {
-    if (forceUpdate === 0) return; // skip initial (handled by cache logic above)
+    // No usable cache — full network load.
+    if (!scheduledFetch) {
+      return runFetch(true);
+    }
+  }, [runFetch]);
 
-    const controller = new AbortController();
-    let retryCount = 0;
-    const MAX_RETRIES = 4;
-    const RETRY_DELAY = 3000;
+  const updateData = useCallback(() => {
+    runFetch(false);
+  }, [runFetch]);
 
-    const doFetch = () => {
-      const url = `${DEFAULT_CSV_URL}${
-        DEFAULT_CSV_URL.includes("?") ? "&" : "?"
-      }_=${Date.now()}`;
-
-      fetch(url, { signal: controller.signal, cache: "no-store" })
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text();
-        })
-        .then((text) => {
-          const parsed = parseCSV(text);
-
-          // If only 1 year detected (IMPORTRANGE not resolved), retry
-          if (parsed.years.length <= 1 && retryCount < MAX_RETRIES) {
-            retryCount++;
-            console.warn(
-              `[Pareto] Only ${parsed.years.length} year(s) detected, ` +
-                `retrying in ${RETRY_DELAY / 1000}s (attempt ${retryCount}/${MAX_RETRIES})...`
-            );
-            setTimeout(doFetch, RETRY_DELAY);
-            return;
-          }
-
-          // Only save to cache if we got more data than before
-          const prevYears = data?.years.length ?? 0;
-          if (parsed.years.length >= prevYears && parsed.records.length > 0) {
-            saveCache(text);
-            console.log(
-              `[Pareto] Fresh data saved to cache (${parsed.years.length} years, ` +
-                `${parsed.records.length} records)`
-            );
-          }
-
-          setData(parsed);
-          setFetchedAt(new Date());
-          setFromCache(false);
-          setLoading(false);
-        })
-        .catch((e) => {
-          if ((e as Error).name === "AbortError") return;
-          setError((e as Error).message || "Gagal memuat data");
-          setLoading(false);
-        });
-    };
-
-    setLoading(true);
-    setError(null);
-    setFromCache(false);
-    doFetch();
-
-    return () => controller.abort();
-  }, [forceUpdate]);
-
-  return { data, loading, error, fetchedAt, fromCache, updateData };
+  return {
+    data,
+    loading,
+    refreshing,
+    error,
+    fetchedAt,
+    fromCache,
+    isStale,
+    updateData,
+  };
 }
