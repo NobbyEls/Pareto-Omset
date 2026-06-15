@@ -28,7 +28,7 @@ import {
 } from "./lib/csvParser";
 
 export default function App() {
-  const { data, loading, error, fetchedAt, fromCache, updateData } = useDataset();
+  const { data, loading, refreshing, error, fetchedAt, fromCache, isStale, updateData } = useDataset();
 
   const [primaryYear, setPrimaryYear] = useState<YearFilter>("all");
   const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
@@ -104,7 +104,7 @@ export default function App() {
       <BgDecoration />
 
       <div className="relative z-10">
-        <Header loading={loading} fetchedAt={fetchedAt} fromCache={fromCache} onUpdateData={updateData}>
+        <Header loading={loading} refreshing={refreshing} fetchedAt={fetchedAt} fromCache={fromCache} isStale={isStale} onUpdateData={updateData}>
           {ready && data && (
             <Filters
               years={data.years}
