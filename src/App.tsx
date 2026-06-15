@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Header } from "./components/Header";
 import { Filters, type DeptFilter, type KotaFilter, type YearFilter } from "./components/Filters";
 import { Tabs, type TabKey } from "./components/Tabs";
-import { KpiCards } from "./components/KpiCards";
 import { SectionCard } from "./components/SectionCard";
 import { DataTable } from "./components/DataTable";
 import { YearlyMatrix } from "./components/YearlyMatrix";
@@ -137,12 +136,6 @@ export default function App() {
             <>
               {activeTab === "yearly" ? (
                 <>
-                  <KpiCards
-                    data={viewData}
-                    primaryYear={matrixYear}
-                    selectedDepartments={visibleDepartments}
-                  />
-
                   <SectionCard
                     title={`Tren Bulanan • ${kotaLabel}`}
                     description={
