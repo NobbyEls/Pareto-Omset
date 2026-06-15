@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { parseIDNumber, MONTHS_ID, type MonthId } from "./format";
+import { parseIDNumber, MONTHS_ID, MONTH_INDEX, type MonthId } from "./format";
+import { getWebAppUrl } from "./dataset";
 
 /**
  * Jasa Breakdown CSV URL (gid=1300836220).
@@ -18,10 +19,19 @@ export interface JasaRecord {
   amount: number;
 }
 
+export interface JasaSalesRecord {
+  bulan: MonthId;
+  bulanIndex: number;
+  cabang: string;
+  amount: number;
+  year: number;
+}
+
 export interface JasaKotaSummary {
   cabang: string;
   jasaPart: number;
   jasaService: number;
+  jasaSales: number;
   total: number;
   share: number;
 }
@@ -31,11 +41,13 @@ export interface JasaMonthSummary {
   bulanIndex: number;
   jasaPart: number;
   jasaService: number;
+  jasaSales: number;
   total: number;
 }
 
 export interface JasaParsedData {
   records: JasaRecord[];
+  jasaSalesRecords: JasaSalesRecord[];
   cabangList: string[];
   months: MonthId[];
   /** Aggregated per kota (all months combined) */
@@ -46,14 +58,94 @@ export interface JasaParsedData {
 }
 
 /**
+ * Mapping from kota codes (G-XXX) in the main database to the city names
+ * used in the Jasa CSV sheet.
+ */
+const KOTA_CODE_TO_NAME: Record<string, string> = {
+  "G-YGY": "YOGYAKARTA",
+  "G-SLO": "SOLO",
+  "G-PWT": "PURWOKERTO",
+  "G-BBS": "BABARSARI",
+  "G-TGL": "TEGAL",
+  "G-MDN": "MADIUN",
+  "G-SMG": "SEMARANG",
+};
+
+/**
+ * Parse "Jasa Sales" records from the main database (Web App JSON response).
+ * The database field is a 2D array with 12 cols: 4 cols per year-block
+ * (Bulan, KotaCode, Dept, Amount) x 3 years.
+ * We filter for rows where Dept = "JASA" (exact, case-insensitive).
+ */
+export function parseJasaSalesFromDatabase(database: string[][]): JasaSalesRecord[] {
+  if (!database || database.length < 2) return [];
+
+  const records: JasaSalesRecord[] = [];
+
+  // Detect year blocks from header row
+  const headerRow = database[0] || [];
+  const yearBlocks: { year: number; col: number }[] = [];
+  for (let i = 0; i < headerRow.length; i++) {
+    const cell = String(headerRow[i] || "").trim();
+    const m = cell.match(/^(20\d{2})$/);
+    if (m) yearBlocks.push({ col: i, year: Number(m[1]) });
+  }
+
+  if (yearBlocks.length === 0) return [];
+
+  // Determine layout: 4-col (with kota) per year-block
+  // Each block: [Bulan, Kota, Dept, Amount]
+  for (let r = 1; r < database.length; r++) {
+    const row = database[r];
+    if (!row) continue;
+
+    for (const block of yearBlocks) {
+      const bulanRaw = String(row[block.col] || "").trim();
+      const kotaRaw = String(row[block.col + 1] || "").trim().toUpperCase();
+      const deptRaw = String(row[block.col + 2] || "").trim().toUpperCase();
+      const amountRaw = row[block.col + 3];
+
+      // Skip if no month
+      if (!bulanRaw) continue;
+
+      // Must be exactly "JASA" (not "JASA SERVICE")
+      if (deptRaw !== "JASA") continue;
+
+      // Validate month
+      const monthIndex = MONTH_INDEX[bulanRaw.toLowerCase()];
+      if (monthIndex == null) continue;
+
+      // Map kota code to name
+      const cabang = KOTA_CODE_TO_NAME[kotaRaw];
+      if (!cabang) continue;
+
+      const amount = parseIDNumber(amountRaw);
+      if (amount == null || amount === 0) continue;
+
+      records.push({
+        bulan: MONTHS_ID[monthIndex],
+        bulanIndex: monthIndex,
+        cabang,
+        amount,
+        year: block.year,
+      });
+    }
+  }
+
+  return records;
+}
+
+/**
  * Parse the Jasa Breakdown CSV.
  * Structure:
  *   Col 0: Bulan (month name, or empty for header/separator rows)
  *   Col 1: Cabang (city name, "Cabang" for header, or "Grand Total")
  *   Col 2: Jasa Service type ("JASA PART" | "JASA SERVICE", empty for totals)
  *   Col 3: SUM of Jasa Fix (amount in Indonesian number format)
+ *
+ * @param jasaSalesRecords - Optional records from the main database for "Jasa Sales"
  */
-export function parseJasaCSV(text: string): JasaParsedData {
+export function parseJasaCSV(text: string, jasaSalesRecords: JasaSalesRecord[] = []): JasaParsedData {
   const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
   const records: JasaRecord[] = [];
   const cabangSet = new Set<string>();
@@ -96,27 +188,39 @@ export function parseJasaCSV(text: string): JasaParsedData {
     monthSet.add(bulan);
   }
 
-  const cabangList = Array.from(cabangSet).sort();
-  const months = MONTHS_ID.filter((m) => monthSet.has(m));
+  // Also add cabang from jasaSalesRecords to get combined lists
+  for (const r of jasaSalesRecords) {
+    cabangSet.add(r.cabang);
+    monthSet.add(r.bulan);
+  }
+  const allCabangList = Array.from(cabangSet).sort();
+  const allMonths = MONTHS_ID.filter((m) => monthSet.has(m));
 
   // Aggregate by kota
-  const kotaMap = new Map<string, { jasaPart: number; jasaService: number }>();
+  const kotaMap = new Map<string, { jasaPart: number; jasaService: number; jasaSales: number }>();
   for (const r of records) {
-    const entry = kotaMap.get(r.cabang) || { jasaPart: 0, jasaService: 0 };
+    const entry = kotaMap.get(r.cabang) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
     if (r.type === "JASA PART") entry.jasaPart += r.amount;
     else entry.jasaService += r.amount;
     kotaMap.set(r.cabang, entry);
   }
+  for (const r of jasaSalesRecords) {
+    const entry = kotaMap.get(r.cabang) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    entry.jasaSales += r.amount;
+    kotaMap.set(r.cabang, entry);
+  }
 
-  const grandTotal = records.reduce((sum, r) => sum + r.amount, 0);
+  const grandTotal = records.reduce((sum, r) => sum + r.amount, 0)
+    + jasaSalesRecords.reduce((sum, r) => sum + r.amount, 0);
 
-  const byKota: JasaKotaSummary[] = cabangList.map((cabang) => {
-    const entry = kotaMap.get(cabang)!;
-    const total = entry.jasaPart + entry.jasaService;
+  const byKota: JasaKotaSummary[] = allCabangList.map((cabang) => {
+    const entry = kotaMap.get(cabang) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    const total = entry.jasaPart + entry.jasaService + entry.jasaSales;
     return {
       cabang,
       jasaPart: entry.jasaPart,
       jasaService: entry.jasaService,
+      jasaSales: entry.jasaSales,
       total,
       share: grandTotal > 0 ? (total / grandTotal) * 100 : 0,
     };
@@ -126,26 +230,32 @@ export function parseJasaCSV(text: string): JasaParsedData {
   byKota.sort((a, b) => b.total - a.total);
 
   // Aggregate by month
-  const monthMap = new Map<MonthId, { jasaPart: number; jasaService: number }>();
+  const monthMap = new Map<MonthId, { jasaPart: number; jasaService: number; jasaSales: number }>();
   for (const r of records) {
-    const entry = monthMap.get(r.bulan) || { jasaPart: 0, jasaService: 0 };
+    const entry = monthMap.get(r.bulan) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
     if (r.type === "JASA PART") entry.jasaPart += r.amount;
     else entry.jasaService += r.amount;
     monthMap.set(r.bulan, entry);
   }
+  for (const r of jasaSalesRecords) {
+    const entry = monthMap.get(r.bulan) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
+    entry.jasaSales += r.amount;
+    monthMap.set(r.bulan, entry);
+  }
 
-  const byMonth: JasaMonthSummary[] = months.map((bulan) => {
-    const entry = monthMap.get(bulan)!;
+  const byMonth: JasaMonthSummary[] = allMonths.map((bulan) => {
+    const entry = monthMap.get(bulan) || { jasaPart: 0, jasaService: 0, jasaSales: 0 };
     return {
       bulan,
       bulanIndex: MONTHS_ID.indexOf(bulan),
       jasaPart: entry.jasaPart,
       jasaService: entry.jasaService,
-      total: entry.jasaPart + entry.jasaService,
+      jasaSales: entry.jasaSales,
+      total: entry.jasaPart + entry.jasaService + entry.jasaSales,
     };
   });
 
-  return { records, cabangList, months, byKota, byMonth, grandTotal };
+  return { records, jasaSalesRecords, cabangList: allCabangList, months: allMonths, byKota, byMonth, grandTotal };
 }
 
 export interface JasaDatasetState {
@@ -158,6 +268,7 @@ export interface JasaDatasetState {
 
 const JASA_CACHE_KEY = "pareto-jasa-cache";
 const JASA_CACHE_TS_KEY = "pareto-jasa-cache-ts";
+const JASA_SALES_CACHE_KEY = "pareto-jasa-sales-cache";
 
 function loadJasaCache(): { text: string; ts: Date } | null {
   try {
@@ -175,9 +286,40 @@ function saveJasaCache(text: string): void {
   } catch (_) {}
 }
 
+function loadJasaSalesCache(): JasaSalesRecord[] {
+  try {
+    const raw = localStorage.getItem(JASA_SALES_CACHE_KEY);
+    if (raw) return JSON.parse(raw) as JasaSalesRecord[];
+  } catch (_) {}
+  return [];
+}
+
+function saveJasaSalesCache(records: JasaSalesRecord[]): void {
+  try {
+    localStorage.setItem(JASA_SALES_CACHE_KEY, JSON.stringify(records));
+  } catch (_) {}
+}
+
 /**
- * Hook to fetch and parse the Jasa Breakdown CSV.
- * Uses localStorage cache — only re-fetches when user triggers updateData().
+ * Fetch main database from the Web App and extract Jasa Sales records.
+ */
+async function fetchJasaSalesFromWebApp(signal: AbortSignal): Promise<JasaSalesRecord[]> {
+  const webAppUrl = getWebAppUrl();
+  if (!webAppUrl) return [];
+
+  const url = `${webAppUrl}${webAppUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+  const res = await fetch(url, { signal, cache: "no-store" });
+  if (!res.ok) throw new Error(`Web App HTTP ${res.status}`);
+  const json = (await res.json()) as { database?: string[][]; error?: string };
+  if (json.error) throw new Error(`Web App error: ${json.error}`);
+  if (!json.database) return [];
+
+  return parseJasaSalesFromDatabase(json.database);
+}
+
+/**
+ * Hook to fetch and parse the Jasa Breakdown CSV + Jasa Sales from Web App.
+ * Uses localStorage cache -- only re-fetches when user triggers updateData().
  */
 export function useJasaDataset(): JasaDatasetState {
   const [data, setData] = useState<JasaParsedData | null>(null);
@@ -191,8 +333,9 @@ export function useJasaDataset(): JasaDatasetState {
   // On mount: try cache
   useEffect(() => {
     const cached = loadJasaCache();
+    const cachedSales = loadJasaSalesCache();
     if (cached) {
-      const parsed = parseJasaCSV(cached.text);
+      const parsed = parseJasaCSV(cached.text, cachedSales);
       if (parsed.records.length > 0) {
         setData(parsed);
         setFromCache(true);
@@ -215,13 +358,20 @@ export function useJasaDataset(): JasaDatasetState {
     const attempt = () => {
       const url = `${JASA_CSV_URL}${JASA_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`;
 
-      fetch(url, { signal: controller.signal, cache: "no-store" })
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text();
-        })
-        .then((text) => {
-          const parsed = parseJasaCSV(text);
+      // Fetch both Jasa CSV and Jasa Sales from Web App in parallel
+      Promise.all([
+        fetch(url, { signal: controller.signal, cache: "no-store" })
+          .then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.text();
+          }),
+        fetchJasaSalesFromWebApp(controller.signal).catch((e) => {
+          console.warn("[Jasa] Failed to fetch Jasa Sales from Web App:", e);
+          return [] as JasaSalesRecord[];
+        }),
+      ])
+        .then(([text, jasaSalesRecords]) => {
+          const parsed = parseJasaCSV(text, jasaSalesRecords);
 
           if (parsed.records.length === 0 && retryCount < MAX_RETRIES) {
             retryCount++;
@@ -235,6 +385,9 @@ export function useJasaDataset(): JasaDatasetState {
 
           if (parsed.records.length > 0) {
             saveJasaCache(text);
+          }
+          if (jasaSalesRecords.length > 0) {
+            saveJasaSalesCache(jasaSalesRecords);
           }
 
           setData(parsed);
