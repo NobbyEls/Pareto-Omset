@@ -685,3 +685,26 @@ html:not(.dark) .pareto-progress-track {
     height: 160px;
   }
 }
+
+
+
+/* =============================================================
+   HEADER LOGO IMAGE — ELS.ID brand mark next to the app title.
+   Mirrors NobbyEls/ParetoPC's `.header-logo-img`.
+   ============================================================= */
+.header-logo-img {
+  height: 40px;
+  width: auto;
+  max-width: 200px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+@media (min-width: 768px) {
+  .header-logo-img {
+    height: 46px;
+    margin-left: 14px;
+  }
+}
