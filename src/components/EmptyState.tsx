@@ -3,7 +3,7 @@ import { AlertTriangle, Database, Loader2 } from "lucide-react";
 export function LoadingState() {
   return (
     <div className="glass-card flex flex-col items-center justify-center gap-3 p-12 text-center">
-      <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#6366f1" }} />
+      <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--indigo)" }} />
       <div>
         <div
           className="font-display font-semibold"
@@ -26,7 +26,7 @@ export function ErrorState({ message }: { message: string }) {
         className="grid h-12 w-12 place-items-center rounded-2xl"
         style={{
           background: "rgba(244, 63, 94, 0.15)",
-          color: "#fb7185",
+          color: "var(--trend-down)",
         }}
       >
         <AlertTriangle className="h-6 w-6" />

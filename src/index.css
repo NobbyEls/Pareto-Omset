@@ -37,6 +37,25 @@
   --blue: #3b82f6;
   --sky: #0ea5e9;
 
+  /* Theme-adaptive accent colors used by data cells / chart legends.
+     Dark mode = light/pastel tints (good on dark bg).
+     Light mode (overridden in html:not(.dark)) = much darker so they
+     stay legible on a light card background. */
+  --tint-nb: #a5b4fc;        /* indigo-300 */
+  --tint-pc: #67e8f9;        /* cyan-300 */
+  --tint-jasa: #f9a8d4;      /* pink-300 */
+  --tint-share: #fcd34d;     /* amber-300 */
+  --tint-year-header: #c7d2fe; /* indigo-200 */
+  --trend-up: #34d399;       /* emerald-400 */
+  --trend-down: #fb7185;     /* rose-400 */
+
+  /* Big-number text colors for the Jasa breakdown KPI cards.
+     Same hue family as JASA_PART/SERVICE/SALES_COLOR but tuned for
+     legibility per theme. */
+  --jasa-part-text: #f59e0b;     /* amber-500 — dark mode */
+  --jasa-service-text: #6366f1;  /* indigo-500 — dark mode */
+  --jasa-sales-text: #10b981;    /* emerald-500 — dark mode */
+
   /* Gradients */
   --grad-primary: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
   --grad-success: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
@@ -73,6 +92,20 @@ html:not(.dark) {
   --shadow-glow: 0 0 60px rgba(99, 102, 241, 0.1);
   --shadow-card: 0 8px 28px rgba(15, 23, 42, 0.1);
   --shadow-elevated: 0 20px 50px rgba(15, 23, 42, 0.15);
+
+  /* Light-mode override of theme-adaptive accents so dept-tint text and
+     trend badges stay legible on a near-white surface. */
+  --tint-nb: #4338ca;         /* indigo-700 */
+  --tint-pc: #0e7490;         /* cyan-700 */
+  --tint-jasa: #be185d;       /* pink-700 */
+  --tint-share: #b45309;      /* amber-700 */
+  --tint-year-header: #4338ca; /* indigo-700 */
+  --trend-up: #047857;        /* emerald-700 */
+  --trend-down: #be123c;      /* rose-700 */
+
+  --jasa-part-text: #b45309;     /* amber-700 — light mode */
+  --jasa-service-text: #4338ca;  /* indigo-700 — light mode */
+  --jasa-sales-text: #047857;    /* emerald-700 — light mode */
 }
 
 * {

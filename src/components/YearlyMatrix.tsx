@@ -92,7 +92,7 @@ function PctCell({ value }: { value: number | null }) {
   return (
     <span
       className={`font-mono text-[12px] font-medium tabular-nums ${positive ? "matrix-pct-pos" : "matrix-pct-neg"}`}
-      style={{ color: positive ? "#67e8f9" : "#fb7185" }}
+      style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
     >
       {formatPctID(value)}
     </span>
@@ -178,7 +178,7 @@ export function YearlyMatrix({ data, year }: Props) {
               style={{
                 ...cellBorderStyle,
                 background: "rgba(99, 102, 241, 0.18)",
-                color: "#c7d2fe",
+                color: "var(--tint-year-header)",
               }}
             >
               Bulan
@@ -238,7 +238,7 @@ export function YearlyMatrix({ data, year }: Props) {
                 style={{
                   ...cellBorderStyle,
                   background: "rgba(99, 102, 241, 0.06)",
-                  color: "#c7d2fe",
+                  color: "var(--tint-year-header)",
                 }}
               >
                 {m}
@@ -302,7 +302,7 @@ export function YearlyMatrix({ data, year }: Props) {
                 ...cellBorderStyle,
                 background:
                   "linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(236, 72, 153, 0.3))",
-                color: "#fff",
+                color: "var(--text-primary)",
               }}
             >
               Total

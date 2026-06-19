@@ -99,7 +99,7 @@ export function Header({
               <Database
                 className={`h-3 w-3 ${refreshing ? "animate-pulse" : ""}`}
                 style={{
-                  color: isStale ? "#f59e0b" : "#10b981",
+                  color: isStale ? "var(--amber)" : "var(--emerald)",
                 }}
               />
               <span>{statusLabel}</span>

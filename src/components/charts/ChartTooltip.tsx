@@ -81,7 +81,7 @@ export function ChartTooltip({
           <span style={{ color: "var(--text-dim)" }}>Total</span>
           <span
             className="font-mono font-bold tabular-nums"
-            style={{ color: "#fcd34d" }}
+            style={{ color: "var(--tint-share)" }}
           >
             {formatIDRCompact(total)}
           </span>

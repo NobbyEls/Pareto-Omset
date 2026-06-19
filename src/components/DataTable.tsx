@@ -137,7 +137,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
         {label}
         <ArrowUpDown
           className={classNames("h-3 w-3 transition")}
-          style={{ color: sortKey === k ? "#a5b4fc" : "var(--text-dim)" }}
+          style={{ color: sortKey === k ? "var(--tint-nb)" : "var(--text-dim)" }}
         />
       </span>
     </th>
@@ -211,7 +211,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
               >
                 <td
                   className="px-3 py-2 text-sm font-semibold"
-                  style={{ color: "#c7d2fe" }}
+                  style={{ color: "var(--tint-year-header)" }}
                 >
                   {r.year}
                 </td>
@@ -247,7 +247,7 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
                 )}
                 <td
                   className="px-3 py-2 text-right font-mono text-sm font-semibold tabular-nums"
-                  style={{ color: "#fcd34d" }}
+                  style={{ color: "var(--tint-share)" }}
                 >
                   {r.total == null ? "—" : formatIDR(r.total)}
                 </td>
