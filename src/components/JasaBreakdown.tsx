@@ -36,9 +36,18 @@ interface JasaBreakdownProps {
 const PART_SERVICE_BASELINE_YEAR = 2026;
 
 /* ─── Color palette for Jasa ──────────────────────────── */
+// Used for chart bar fills (Recharts) AND icon-square backgrounds — both
+// scenarios need a saturated raw-hex value (CSS vars don't propagate into
+// Recharts SVG attributes).
 const JASA_PART_COLOR = "#f59e0b"; // amber
 const JASA_SERVICE_COLOR = "#6366f1"; // indigo
 const JASA_SALES_COLOR = "#10b981"; // emerald
+
+// Theme-adaptive text variants. KPI card big numbers and table cell values
+// use these so light mode stays legible (darker shades on a near-white bg).
+const JASA_PART_TEXT = "var(--jasa-part-text)";
+const JASA_SERVICE_TEXT = "var(--jasa-service-text)";
+const JASA_SALES_TEXT = "var(--jasa-sales-text)";
 
 const KOTA_GRADIENTS: Record<string, string> = {
   YOGYAKARTA: "linear-gradient(135deg, #6366f1, #ec4899)",
@@ -132,7 +141,7 @@ function KotaRow({
       {showPart && (
         <td
           className="px-3 py-3 text-right font-mono tabular-nums"
-          style={{ color: JASA_PART_COLOR }}
+          style={{ color: JASA_PART_TEXT }}
         >
           {formatIDRCompact(jasaPart)}
           <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
@@ -143,7 +152,7 @@ function KotaRow({
       {showService && (
         <td
           className="px-3 py-3 text-right font-mono tabular-nums"
-          style={{ color: JASA_SERVICE_COLOR }}
+          style={{ color: JASA_SERVICE_TEXT }}
         >
           {formatIDRCompact(jasaService)}
           <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
@@ -151,7 +160,7 @@ function KotaRow({
           </span>
         </td>
       )}
-      <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_SALES_COLOR }}>
+      <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_SALES_TEXT }}>
         {formatIDRCompact(jasaSales)}
         <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
           ({salesPct}%)
@@ -162,7 +171,7 @@ function KotaRow({
       </td>
       <td className="px-3 py-3 text-right">
         <div className="flex flex-col items-end gap-1">
-          <span className="font-mono font-semibold tabular-nums" style={{ color: "#fcd34d" }}>
+          <span className="font-mono font-semibold tabular-nums" style={{ color: "var(--tint-share)" }}>
             {share.toFixed(1)}%
           </span>
           <div className="h-1.5 w-24 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
@@ -349,7 +358,7 @@ export function JasaBreakdown({
               </div>
               <div
                 className="font-mono text-lg font-bold"
-                style={{ color: JASA_SERVICE_COLOR }}
+                style={{ color: JASA_SERVICE_TEXT }}
               >
                 {formatIDRCompact(totalService)}
                 <span
@@ -376,7 +385,7 @@ export function JasaBreakdown({
               </div>
               <div
                 className="font-mono text-lg font-bold"
-                style={{ color: JASA_PART_COLOR }}
+                style={{ color: JASA_PART_TEXT }}
               >
                 {formatIDRCompact(totalPart)}
                 <span
@@ -402,7 +411,7 @@ export function JasaBreakdown({
             </div>
             <div
               className="font-mono text-lg font-bold"
-              style={{ color: JASA_SALES_COLOR }}
+              style={{ color: JASA_SALES_TEXT }}
             >
               {formatIDRCompact(totalSales)}
               <span
@@ -536,14 +545,14 @@ export function JasaBreakdown({
               <tr style={{ background: "rgba(99, 102, 241, 0.12)" }}>
                 <td
                   className="font-display px-3 py-3 text-left font-bold"
-                  style={{ color: "#fff" }}
+                  style={{ color: "var(--text-primary)" }}
                 >
                   Grand Total
                 </td>
                 {showPart && (
                   <td
                     className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                    style={{ color: JASA_PART_COLOR }}
+                    style={{ color: JASA_PART_TEXT }}
                   >
                     {formatIDRCompact(totalPart)}
                   </td>
@@ -551,26 +560,26 @@ export function JasaBreakdown({
                 {showService && (
                   <td
                     className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                    style={{ color: JASA_SERVICE_COLOR }}
+                    style={{ color: JASA_SERVICE_TEXT }}
                   >
                     {formatIDRCompact(totalService)}
                   </td>
                 )}
                 <td
                   className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                  style={{ color: JASA_SALES_COLOR }}
+                  style={{ color: JASA_SALES_TEXT }}
                 >
                   {formatIDRCompact(totalSales)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                  style={{ color: "#fcd34d" }}
+                  style={{ color: "var(--tint-share)" }}
                 >
                   {formatIDR(filtered.grandTotal)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono tabular-nums"
-                  style={{ color: "#cbd5e1" }}
+                  style={{ color: "var(--text-muted)" }}
                 >
                   100,0%
                 </td>

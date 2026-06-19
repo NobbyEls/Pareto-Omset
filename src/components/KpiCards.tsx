@@ -77,7 +77,7 @@ function KpiCard({ icon, label, value, sublabel, trend, gradient }: KpiProps) {
               background: trendUp
                 ? "rgba(16, 185, 129, 0.15)"
                 : "rgba(244, 63, 94, 0.15)",
-              color: trendUp ? "#34d399" : "#fb7185",
+              color: trendUp ? "var(--trend-up)" : "var(--trend-down)",
               border: `1px solid ${trendUp ? "rgba(16, 185, 129, 0.3)" : "rgba(244, 63, 94, 0.3)"}`,
             }}
           >

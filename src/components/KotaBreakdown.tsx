@@ -40,7 +40,7 @@ function PctBadge({ value }: { value: number | null }) {
   return (
     <span
       className="font-mono font-semibold tabular-nums"
-      style={{ color: positive ? "#34d399" : "#fb7185" }}
+      style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
     >
       {formatPctID(value)}
     </span>
@@ -151,7 +151,7 @@ export function KotaBreakdown({ data, year }: Props) {
         align === "right" ? "text-right" : "text-left"
       )}
       style={{
-        color: sortKey === k ? "#c7d2fe" : "var(--text-dim)",
+        color: sortKey === k ? "var(--tint-year-header)" : "var(--text-dim)",
         background: "rgba(99, 102, 241, 0.08)",
         borderBottom: "1px solid var(--border-subtle)",
       }}
@@ -166,7 +166,7 @@ export function KotaBreakdown({ data, year }: Props) {
         <ArrowUpDown
           className="h-3 w-3 transition"
           style={{
-            color: sortKey === k ? "#a5b4fc" : "var(--text-dim)",
+            color: sortKey === k ? "var(--tint-nb)" : "var(--text-dim)",
           }}
         />
       </span>
@@ -232,19 +232,19 @@ export function KotaBreakdown({ data, year }: Props) {
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono tabular-nums"
-                  style={{ color: "#a5b4fc" }}
+                  style={{ color: "var(--tint-nb)" }}
                 >
                   {formatIDRCompact(r.NB)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono tabular-nums"
-                  style={{ color: "#67e8f9" }}
+                  style={{ color: "var(--tint-pc)" }}
                 >
                   {formatIDRCompact(r.PC)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono tabular-nums"
-                  style={{ color: "#f9a8d4" }}
+                  style={{ color: "var(--tint-jasa)" }}
                 >
                   {formatIDRCompact(r.JASA)}
                 </td>
@@ -258,7 +258,7 @@ export function KotaBreakdown({ data, year }: Props) {
                   <div className="flex flex-col items-end gap-1">
                     <span
                       className="font-mono font-semibold tabular-nums"
-                      style={{ color: "#fcd34d" }}
+                      style={{ color: "var(--tint-share)" }}
                     >
                       {r.share.toFixed(1)}%
                     </span>
@@ -285,20 +285,20 @@ export function KotaBreakdown({ data, year }: Props) {
           <tr style={{ background: "rgba(99, 102, 241, 0.12)" }}>
             <td
               className="font-display px-3 py-3 text-left font-bold"
-              style={{ color: "#fff" }}
+              style={{ color: "var(--text-primary)" }}
             >
               Total {year}
             </td>
             <td colSpan={3}></td>
             <td
               className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-              style={{ color: "#fcd34d" }}
+              style={{ color: "var(--tint-share)" }}
             >
               {formatIDR(grandTotal)}
             </td>
             <td
               className="px-3 py-3 text-right font-mono tabular-nums"
-              style={{ color: "#cbd5e1" }}
+              style={{ color: "var(--text-muted)" }}
             >
               100,0%
             </td>
