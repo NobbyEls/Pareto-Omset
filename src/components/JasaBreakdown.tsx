@@ -138,34 +138,35 @@ function KotaRow({
           </div>
         </div>
       </td>
-      {showPart && (
-        <td
-          className="px-3 py-3 text-right font-mono tabular-nums"
-          style={{ color: JASA_PART_TEXT }}
-        >
-          {formatIDRCompact(jasaPart)}
-          <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
-            ({partPct}%)
-          </span>
-        </td>
-      )}
+      {/* Order: Sales → Service → Part — emphasises revenue first. */}
+      <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_SALES_TEXT }}>
+        {formatIDR(jasaSales)}
+        <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
+          ({salesPct}%)
+        </span>
+      </td>
       {showService && (
         <td
           className="px-3 py-3 text-right font-mono tabular-nums"
           style={{ color: JASA_SERVICE_TEXT }}
         >
-          {formatIDRCompact(jasaService)}
+          {formatIDR(jasaService)}
           <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
             ({servicePct}%)
           </span>
         </td>
       )}
-      <td className="px-3 py-3 text-right font-mono tabular-nums" style={{ color: JASA_SALES_TEXT }}>
-        {formatIDRCompact(jasaSales)}
-        <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
-          ({salesPct}%)
-        </span>
-      </td>
+      {showPart && (
+        <td
+          className="px-3 py-3 text-right font-mono tabular-nums"
+          style={{ color: JASA_PART_TEXT }}
+        >
+          {formatIDR(jasaPart)}
+          <span className="ml-1 text-[10px]" style={{ color: "var(--text-dim)" }}>
+            ({partPct}%)
+          </span>
+        </td>
+      )}
       <td className="px-3 py-3 text-right font-mono font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
         {formatIDR(total)}
       </td>
@@ -319,7 +320,7 @@ export function JasaBreakdown({
 
   return (
     <div className="space-y-5">
-      {/* KPI summary cards */}
+      {/* KPI summary cards — order: Total → Sales → Service → Part. */}
       <div
         className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${
           visibleKpis >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
@@ -340,7 +341,32 @@ export function JasaBreakdown({
               className="font-mono text-lg font-bold"
               style={{ color: "var(--text-primary)" }}
             >
-              {formatIDRCompact(filtered.grandTotal)}
+              {formatIDR(filtered.grandTotal)}
+            </div>
+          </div>
+        </div>
+        <div className="glass-card flex items-center gap-3 p-4">
+          <div
+            className="grid h-10 w-10 place-items-center rounded-xl"
+            style={{ background: JASA_SALES_COLOR }}
+          >
+            <TrendingUp className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs" style={{ color: "var(--text-dim)" }}>
+              Jasa Sales
+            </div>
+            <div
+              className="font-mono text-lg font-bold"
+              style={{ color: JASA_SALES_TEXT }}
+            >
+              {formatIDR(totalSales)}
+              <span
+                className="ml-1 text-xs font-normal"
+                style={{ color: "var(--text-muted)" }}
+              >
+                ({salesPctGlobal}%)
+              </span>
             </div>
           </div>
         </div>
@@ -360,7 +386,7 @@ export function JasaBreakdown({
                 className="font-mono text-lg font-bold"
                 style={{ color: JASA_SERVICE_TEXT }}
               >
-                {formatIDRCompact(totalService)}
+                {formatIDR(totalService)}
                 <span
                   className="ml-1 text-xs font-normal"
                   style={{ color: "var(--text-muted)" }}
@@ -387,7 +413,7 @@ export function JasaBreakdown({
                 className="font-mono text-lg font-bold"
                 style={{ color: JASA_PART_TEXT }}
               >
-                {formatIDRCompact(totalPart)}
+                {formatIDR(totalPart)}
                 <span
                   className="ml-1 text-xs font-normal"
                   style={{ color: "var(--text-muted)" }}
@@ -398,31 +424,6 @@ export function JasaBreakdown({
             </div>
           </div>
         )}
-        <div className="glass-card flex items-center gap-3 p-4">
-          <div
-            className="grid h-10 w-10 place-items-center rounded-xl"
-            style={{ background: JASA_SALES_COLOR }}
-          >
-            <TrendingUp className="h-5 w-5 text-white" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs" style={{ color: "var(--text-dim)" }}>
-              Jasa Sales
-            </div>
-            <div
-              className="font-mono text-lg font-bold"
-              style={{ color: JASA_SALES_TEXT }}
-            >
-              {formatIDRCompact(totalSales)}
-              <span
-                className="ml-1 text-xs font-normal"
-                style={{ color: "var(--text-muted)" }}
-              >
-                ({salesPctGlobal}%)
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Stacked bar chart - monthly trend */}
@@ -430,7 +431,7 @@ export function JasaBreakdown({
         title={`Tren Bulanan Jasa • ${kotaLabel} • ${yearLabel}`}
         description={
           includePartService
-            ? "Perbandingan Jasa Part vs Jasa Service vs Jasa Sales per bulan"
+            ? "Perbandingan Jasa Sales vs Jasa Service vs Jasa Part per bulan"
             : `Jasa Sales per bulan • Part / Service hanya tersedia untuk tahun ${PART_SERVICE_BASELINE_YEAR}`
         }
         tag={{ label: "Jasa - Tren", tone: "amber" }}
@@ -455,6 +456,13 @@ export function JasaBreakdown({
               <Legend
                 wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }}
               />
+              {/* Stack order: Sales (bottom) → Service → Part (top, gets rounded corners). */}
+              <Bar
+                dataKey="Jasa Sales"
+                stackId="a"
+                fill={JASA_SALES_COLOR}
+                radius={[0, 0, 0, 0]}
+              />
               {showService && (
                 <Bar
                   dataKey="Jasa Service"
@@ -468,15 +476,9 @@ export function JasaBreakdown({
                   dataKey="Jasa Part"
                   stackId="a"
                   fill={JASA_PART_COLOR}
-                  radius={[0, 0, 0, 0]}
+                  radius={[4, 4, 0, 0]}
                 />
               )}
-              <Bar
-                dataKey="Jasa Sales"
-                stackId="a"
-                fill={JASA_SALES_COLOR}
-                radius={[4, 4, 0, 0]}
-              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -485,7 +487,7 @@ export function JasaBreakdown({
       {/* Table breakdown per kota */}
       <SectionCard
         title={`Breakdown per Kota • ${kotaLabel} • ${yearLabel}`}
-        description="Detail kontribusi Jasa Part, Jasa Service, dan Jasa Sales per cabang"
+        description="Detail kontribusi Jasa Sales, Jasa Service, dan Jasa Part per cabang"
         tag={{ label: "Jasa - Kota", tone: "pink" }}
       >
         <div className="overflow-x-auto rounded-xl">
@@ -503,9 +505,9 @@ export function JasaBreakdown({
                 {(
                   [
                     "Kota",
-                    ...(showPart ? ["Jasa Part"] : []),
-                    ...(showService ? ["Jasa Service"] : []),
                     "Jasa Sales",
+                    ...(showService ? ["Jasa Service"] : []),
+                    ...(showPart ? ["Jasa Part"] : []),
                     "Total",
                     "% Share",
                   ] as string[]
@@ -541,7 +543,7 @@ export function JasaBreakdown({
                   showService={showService}
                 />
               ))}
-              {/* Grand total row */}
+              {/* Grand total row — same column order as KotaRow above. */}
               <tr style={{ background: "rgba(99, 102, 241, 0.12)" }}>
                 <td
                   className="font-display px-3 py-3 text-left font-bold"
@@ -549,28 +551,28 @@ export function JasaBreakdown({
                 >
                   Grand Total
                 </td>
-                {showPart && (
-                  <td
-                    className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                    style={{ color: JASA_PART_TEXT }}
-                  >
-                    {formatIDRCompact(totalPart)}
-                  </td>
-                )}
+                <td
+                  className="px-3 py-3 text-right font-mono font-bold tabular-nums"
+                  style={{ color: JASA_SALES_TEXT }}
+                >
+                  {formatIDR(totalSales)}
+                </td>
                 {showService && (
                   <td
                     className="px-3 py-3 text-right font-mono font-bold tabular-nums"
                     style={{ color: JASA_SERVICE_TEXT }}
                   >
-                    {formatIDRCompact(totalService)}
+                    {formatIDR(totalService)}
                   </td>
                 )}
-                <td
-                  className="px-3 py-3 text-right font-mono font-bold tabular-nums"
-                  style={{ color: JASA_SALES_TEXT }}
-                >
-                  {formatIDRCompact(totalSales)}
-                </td>
+                {showPart && (
+                  <td
+                    className="px-3 py-3 text-right font-mono font-bold tabular-nums"
+                    style={{ color: JASA_PART_TEXT }}
+                  >
+                    {formatIDR(totalPart)}
+                  </td>
+                )}
                 <td
                   className="px-3 py-3 text-right font-mono font-bold tabular-nums"
                   style={{ color: "var(--tint-share)" }}
