@@ -6,7 +6,7 @@ import {
   type ParsedDataset,
   kotaTotalForYear,
 } from "../lib/csvParser";
-import { formatIDR, formatIDRCompact, classNames } from "../lib/format";
+import { formatIDR, classNames } from "../lib/format";
 
 interface Props {
   data: ParsedDataset;
@@ -234,19 +234,19 @@ export function KotaBreakdown({ data, year }: Props) {
                   className="px-3 py-3 text-right font-mono tabular-nums"
                   style={{ color: "var(--tint-nb)" }}
                 >
-                  {formatIDRCompact(r.NB)}
+                  {formatIDR(r.NB)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono tabular-nums"
                   style={{ color: "var(--tint-pc)" }}
                 >
-                  {formatIDRCompact(r.PC)}
+                  {formatIDR(r.PC)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono tabular-nums"
                   style={{ color: "var(--tint-jasa)" }}
                 >
-                  {formatIDRCompact(r.JASA)}
+                  {formatIDR(r.JASA)}
                 </td>
                 <td
                   className="px-3 py-3 text-right font-mono font-semibold tabular-nums"
