@@ -81,7 +81,9 @@ export function Filters({
               onYearChange(v === "all" ? "all" : Number(v));
             }}
           >
-            <option value="all">Semua Tahun</option>
+            {activeTab !== "monthly" && (
+              <option value="all">Semua Tahun</option>
+            )}
             {years.map((y) => (
               <option key={y} value={String(y)}>
                 {y}
