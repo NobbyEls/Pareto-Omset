@@ -121,7 +121,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
   const subHeaderStyle = (col: ColumnDef) => ({
     ...cellBorderStyle,
     background: col.headerBg,
-    color: col.accent,
+    color: "var(--th-color)",
   });
 
   const subHeaderClass =
@@ -163,7 +163,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
               style={{
                 ...cellBorderStyle,
                 background: "rgba(16, 185, 129, 0.18)",
-                color: "var(--tint-jasa-sales)",
+                color: "var(--th-color)",
               }}
             >
               Bulan
@@ -176,7 +176,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
                 style={{
                   ...cellBorderStyle,
                   background: c.headerBg,
-                  color: c.accent,
+                  color: "var(--th-color)",
                 }}
               >
                 {c.label}
@@ -222,7 +222,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
                   style={{
                     ...cellBorderStyle,
                     background: "rgba(16, 185, 129, 0.06)",
-                    color: "var(--tint-jasa-sales)",
+                    color: "var(--th-color)",
                   }}
                 >
                   {m}
