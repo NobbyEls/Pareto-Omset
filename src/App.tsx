@@ -20,6 +20,7 @@ import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
 import { YoYChart } from "./components/charts/YoYChart";
 import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
 import { useDataset } from "./lib/dataset";
+import { useJasaDataset } from "./lib/jasaDataset";
 import {
   DEPARTMENTS,
   KOTA_NAMES,
@@ -30,6 +31,9 @@ import {
 
 export default function App() {
   const { data, loading, refreshing, error, fetchedAt, fromCache, isStale, updateData } = useDataset();
+  // Lift Jasa dataset to App level so setDataDate() is called as early as
+  // possible — before estimation-dependent components first render.
+  const jasaState = useJasaDataset();
 
   const [primaryYear, setPrimaryYear] = useState<YearFilter>("all");
   const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
@@ -190,6 +194,7 @@ export default function App() {
                   </SectionCard>
 
                   <JasaBreakdown
+                    jasaState={jasaState}
                     selectedYear={primaryYear}
                     selectedKota={selectedKota}
                     selectedDept={selectedDept}
