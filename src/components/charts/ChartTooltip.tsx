@@ -46,6 +46,10 @@ export function ChartTooltip({
       const baseYear = dataKey.replace("_est", "");
       return rowData[`__estimated_${baseYear}`] === true;
     }
+    // For main series keys (e.g. "2026"), check __estimated_2026 directly
+    if (rowData[`__estimated_${dataKey}`] === true) {
+      return true;
+    }
     return false;
   };
 
@@ -53,8 +57,7 @@ export function ChartTooltip({
   const getDisplayName = (entry: (typeof visible)[number]): string => {
     const name = entry.name || String(entry.dataKey);
     if (isEstimatedEntry(entry.dataKey as string)) {
-      // The name already has "(Est)" from the Area component
-      return name;
+      return `${name} (Est)`;
     }
     return name;
   };
