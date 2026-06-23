@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { parseIDNumber, MONTHS_ID, MONTH_INDEX, type MonthId } from "./format";
-import { getWebAppUrl } from "./dataset";
+import { DEFAULT_CSV_URL } from "./dataset";
 import type { KotaCode } from "./csvParser";
 import { setDataDate, parseDateDDMMYYYY } from "./estimation";
 
@@ -408,20 +408,22 @@ function saveJasaSalesCache(records: JasaSalesRecord[]): void {
 }
 
 /**
- * Fetch main database from the Web App and extract Jasa Sales records.
+ * Fetch main database CSV and extract Jasa Sales records.
+ * Reads the same published CSV as useDataset, parses it into a 2D array,
+ * then passes to parseJasaSalesFromDatabase.
  */
-async function fetchJasaSalesFromWebApp(signal: AbortSignal): Promise<JasaSalesRecord[]> {
-  const webAppUrl = getWebAppUrl();
-  if (!webAppUrl) return [];
-
-  const url = `${webAppUrl}${webAppUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+async function fetchJasaSalesFromCsv(signal: AbortSignal): Promise<JasaSalesRecord[]> {
+  const url = `${DEFAULT_CSV_URL}${DEFAULT_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`;
   const res = await fetch(url, { signal, cache: "no-store" });
-  if (!res.ok) throw new Error(`Web App HTTP ${res.status}`);
-  const json = (await res.json()) as { database?: string[][]; error?: string };
-  if (json.error) throw new Error(`Web App error: ${json.error}`);
-  if (!json.database) return [];
+  if (!res.ok) return [];
+  const text = await res.text();
 
-  return parseJasaSalesFromDatabase(json.database);
+  // Convert CSV text to 2D array (simple split — same as csvParser does)
+  const database = text
+    .split("\n")
+    .map((line) => line.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim()));
+
+  return parseJasaSalesFromDatabase(database);
 }
 
 /**
@@ -461,8 +463,8 @@ export function useJasaDataset(): JasaDatasetState {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.text();
           }),
-        fetchJasaSalesFromWebApp(controller.signal).catch((e) => {
-          console.warn("[Jasa] Failed to fetch Jasa Sales from Web App:", e);
+        fetchJasaSalesFromCsv(controller.signal).catch((e) => {
+          console.warn("[Jasa] Failed to fetch Jasa Sales from CSV:", e);
           return [] as JasaSalesRecord[];
         }),
       ])

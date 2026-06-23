@@ -4,21 +4,8 @@ import { parseCSV, type ParsedDataset } from "./csvParser";
 export const DEFAULT_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXIuWnOk4-NoraIjEfqp0vDZCnKhqiklrskW_rfJxQatuPtohbwKtcz5TDTwuq7DW3HmzXAa_q2RqI/pub?gid=1311218554&single=true&output=csv";
 
-/**
- * Hardcoded Apps Script Web App URL — primary data source.
- * Server-side getValues() means IMPORTRANGE is always resolved before
- * the JSON response is returned. No CDN cache, no "Loading..." races.
- *
- * Lock this in code (instead of letting users paste their own URL via
- * a settings UI) so that the dashboard always points at the canonical
- * deployment and end users can't accidentally change it.
- */
-const HARDCODED_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbzxoYH07Y74ybIRBZXI9vHVtc66NEDdeOx64uIr0J0IhNRCZ25RywQiQyQiGVYe2dlp/exec";
-
 const CACHE_KEY = "pareto-omset-cache";
 const CACHE_TS_KEY = "pareto-omset-cache-ts";
-
 
 /** "Update Data" retries this many times with this delay before giving up. */
 const MAX_RETRIES = 6;
@@ -41,13 +28,6 @@ export interface DatasetState {
   updateData: () => void;
 }
 
-/* ───── Web App URL ───── */
-
-/** Returns the canonical Web App URL (locked in code). */
-export function getWebAppUrl(): string {
-  return HARDCODED_WEB_APP_URL;
-}
-
 /* ───── Cache helpers ───── */
 
 function saveCache(text: string): void {
@@ -66,44 +46,7 @@ interface FetchResult {
   parsed: ParsedDataset;
 }
 
-/**
- * Fetch from the Apps Script Web App (returns JSON) and convert
- * the database 2D array back to CSV-like text so the existing parser
- * can consume it. JSON path resolves IMPORTRANGE server-side, so it's
- * always complete (no "Loading...").
- */
-async function fetchFromWebApp(
-  url: string,
-  signal: AbortSignal
-): Promise<FetchResult> {
-  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, {
-    signal,
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`Web App HTTP ${res.status}`);
-  const json = (await res.json()) as { database?: string[][]; error?: string };
-  if (json.error) throw new Error(`Web App error: ${json.error}`);
-  if (!json.database) throw new Error("Web App missing 'database' field");
-
-  // Convert 2D array → CSV text (escape any commas/quotes per RFC 4180-ish).
-  const csvText = json.database
-    .map((row) =>
-      row
-        .map((cell) => {
-          const s = cell == null ? "" : String(cell);
-          if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-            return '"' + s.replace(/"/g, '""') + '"';
-          }
-          return s;
-        })
-        .join(",")
-    )
-    .join("\n");
-
-  return { text: csvText, parsed: parseCSV(csvText) };
-}
-
-/** Plain CSV fetch (Google's published CSV endpoint). */
+/** Fetch directly from the published Google Sheets CSV endpoint. */
 async function fetchFromCsv(signal: AbortSignal): Promise<FetchResult> {
   const url = `${DEFAULT_CSV_URL}${
     DEFAULT_CSV_URL.includes("?") ? "&" : "?"
@@ -114,17 +57,8 @@ async function fetchFromCsv(signal: AbortSignal): Promise<FetchResult> {
   return { text, parsed: parseCSV(text) };
 }
 
-/** Single attempt — Web App if configured, else CSV. */
+/** Single attempt — always CSV (no Web App dependency). */
 async function fetchOnce(signal: AbortSignal): Promise<FetchResult> {
-  const webApp = getWebAppUrl();
-  if (webApp) {
-    try {
-      return await fetchFromWebApp(webApp, signal);
-    } catch (e) {
-      console.warn("[Pareto] Web App fetch failed, falling back to CSV:", e);
-      return await fetchFromCsv(signal);
-    }
-  }
   return await fetchFromCsv(signal);
 }
 
