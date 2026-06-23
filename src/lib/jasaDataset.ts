@@ -457,6 +457,26 @@ export function useJasaDataset(): JasaDatasetState {
     const cachedSales = loadJasaSalesCache();
     // Only use cache if we have BOTH jasa records AND sales records cached
     if (cached && cachedSales.length > 0) {
+      // Cache validation: the cached CSV must contain a valid date in cell
+      // E1 (header[4]) — added later in the sheet. If absent (cache from
+      // before E1 was added), skip the cache and force a fresh fetch so the
+      // estimation date pipeline gets the correct reference date.
+      const firstLine = cached.text.split("\n")[0]?.trim() ?? "";
+      const headerCols = firstLine.split(",");
+      const cachedDate =
+        headerCols.length > 4
+          ? parseDateDDMMYYYY(headerCols[4].trim())
+          : null;
+      if (!cachedDate) {
+        // Old-format cache → evict and refetch
+        try {
+          localStorage.removeItem(JASA_CACHE_KEY);
+          localStorage.removeItem(JASA_CACHE_TS_KEY);
+          localStorage.removeItem(JASA_SALES_CACHE_KEY);
+        } catch (_) {}
+        setForceUpdate(1);
+        return;
+      }
       const parsed = parseJasaCSV(cached.text, cachedSales);
       if (parsed.records.length > 0) {
         setData(parsed);
