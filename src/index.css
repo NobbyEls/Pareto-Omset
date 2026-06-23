@@ -45,6 +45,7 @@
   --tint-pc: #67e8f9;        /* cyan-300 */
   --tint-jasa: #f9a8d4;      /* pink-300 */
   --tint-share: #fcd34d;     /* amber-300 */
+  --tint-jasa-sales: #6ee7b7; /* emerald-300 */
   --tint-year-header: #c7d2fe; /* indigo-200 */
   --trend-up: #34d399;       /* emerald-400 */
   --trend-down: #fb7185;     /* rose-400 */
@@ -102,6 +103,7 @@ html:not(.dark) {
   --tint-pc: #0e7490;         /* cyan-700 */
   --tint-jasa: #be185d;       /* pink-700 */
   --tint-share: #b45309;      /* amber-700 */
+  --tint-jasa-sales: #047857; /* emerald-700 */
   --tint-year-header: #4338ca; /* indigo-700 */
   --trend-up: #047857;        /* emerald-700 */
   --trend-down: #be123c;      /* rose-700 */

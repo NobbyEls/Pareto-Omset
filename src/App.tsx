@@ -46,7 +46,7 @@ export default function App() {
   const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
   const [selectedDept, setSelectedDept] = useState<DeptFilter>("all");
   const [activeTab, setActiveTab] = useState<TabKey>("yearly");
-  const [selectedMonth, setSelectedMonth] = useState<number>(0);
+  const [selectedMonth, setSelectedMonth] = useState<number>(-1);
 
   useEffect(() => {
     if (!data) return;
@@ -120,7 +120,7 @@ export default function App() {
 
   // Initialize selectedMonth to latest available month on first data load.
   useEffect(() => {
-    if (availableMonths.length > 0 && selectedMonth === 0 && !availableMonths.includes(0)) {
+    if (availableMonths.length > 0 && selectedMonth === -1) {
       setSelectedMonth(availableMonths[availableMonths.length - 1]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

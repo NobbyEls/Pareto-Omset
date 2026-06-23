@@ -22,28 +22,28 @@ const COLS: ColumnDef[] = [
     label: "Jasa Sales",
     cellBg: "rgba(16, 185, 129, 0.06)",
     headerBg: "rgba(16, 185, 129, 0.18)",
-    accent: "#6ee7b7",
+    accent: "var(--tint-jasa-sales)",
   },
   {
     key: "jasaService",
     label: "Jasa Service",
     cellBg: "rgba(99, 102, 241, 0.06)",
     headerBg: "rgba(99, 102, 241, 0.18)",
-    accent: "#a5b4fc",
+    accent: "var(--tint-nb)",
   },
   {
     key: "jasaPart",
     label: "Jasa Part",
     cellBg: "rgba(245, 158, 11, 0.06)",
     headerBg: "rgba(245, 158, 11, 0.18)",
-    accent: "#fcd34d",
+    accent: "var(--tint-share)",
   },
   {
     key: "total",
     label: "Total Jasa",
     cellBg: "rgba(245, 158, 11, 0.06)",
     headerBg: "rgba(245, 158, 11, 0.2)",
-    accent: "#fcd34d",
+    accent: "var(--tint-share)",
   },
 ];
 
@@ -121,7 +121,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
   const subHeaderStyle = (col: ColumnDef) => ({
     ...cellBorderStyle,
     background: col.headerBg,
-    color: col.accent,
+    color: "var(--th-color)",
   });
 
   const subHeaderClass =
@@ -163,7 +163,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
               style={{
                 ...cellBorderStyle,
                 background: "rgba(16, 185, 129, 0.18)",
-                color: "#6ee7b7",
+                color: "var(--th-color)",
               }}
             >
               Bulan
@@ -176,7 +176,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
                 style={{
                   ...cellBorderStyle,
                   background: c.headerBg,
-                  color: c.accent,
+                  color: "var(--th-color)",
                 }}
               >
                 {c.label}
@@ -218,11 +218,11 @@ export function JasaMatrix({ jasaState, year }: Props) {
                 style={{ background: "transparent" }}
               >
                 <td
-                  className="sticky left-0 z-10 px-3 py-2 text-left font-medium"
+                  className="sticky left-0 z-10 px-3 py-2 text-center font-medium"
                   style={{
                     ...cellBorderStyle,
                     background: "rgba(16, 185, 129, 0.06)",
-                    color: "#6ee7b7",
+                    color: "var(--th-color)",
                   }}
                 >
                   {m}
@@ -269,7 +269,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
           {/* Total row */}
           <tr className="font-bold">
             <td
-              className="sticky left-0 z-10 px-3 py-2.5 text-left"
+              className="sticky left-0 z-10 px-3 py-2.5 text-center"
               style={{
                 ...cellBorderStyle,
                 background:
