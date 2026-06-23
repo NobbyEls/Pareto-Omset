@@ -48,6 +48,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("yearly");
   const [selectedMonth, setSelectedMonth] = useState<number>(-1);
 
+  // When switching to monthly tab, if "Semua Tahun" is selected, snap to latest year
+  useEffect(() => {
+    if (activeTab === "monthly" && primaryYear === "all" && data && data.years.length > 0) {
+      setPrimaryYear(data.years[data.years.length - 1]);
+    }
+  }, [activeTab, primaryYear, data]);
+
   useEffect(() => {
     if (!data) return;
     if (data.years.length === 0) {
