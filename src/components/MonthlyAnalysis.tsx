@@ -166,47 +166,6 @@ function KpiTile({
   );
 }
 
-/* ─── MoM / YoY comparison tooltip ─────────────────────────────────── */
-function ComparisonTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      className="rounded-xl px-3 py-2.5 text-xs backdrop-blur-md"
-      style={{
-        background: "var(--bg-card)",
-        border: "1px solid var(--border-medium)",
-        boxShadow: "var(--shadow-card)",
-        minWidth: 160,
-      }}
-    >
-      <div
-        className="mb-1.5 font-display font-semibold"
-        style={{ color: "var(--text-primary)" }}
-      >
-        {label}
-      </div>
-      {payload.map((p: any) => {
-        const raw = p.payload?.[`${p.dataKey}Raw`];
-        return (
-          <div
-            key={p.dataKey}
-            className="flex items-center justify-between gap-6"
-          >
-            <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ background: p.color }}
-              />
-              <span style={{ color: "var(--text-muted)" }}>{p.name}</span>
-            </span>
-            <PctBadge value={raw == null ? null : Number(raw)} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 /* ─── Main component ──────────────────────────────────────────────── */
 export function MonthlyAnalysis({
   data,
@@ -455,18 +414,6 @@ export function MonthlyAnalysis({
         return out;
       }),
     [sortedRows, visibleDepartments]
-  );
-
-  const compareRows = useMemo(
-    () =>
-      sortedRows.map((r) => ({
-        name: r.name,
-        MoM: r.mom == null ? 0 : r.mom,
-        YoY: r.yoy == null ? 0 : r.yoy,
-        MoMRaw: r.mom,
-        YoYRaw: r.yoy,
-      })),
-    [sortedRows]
   );
 
   /* ─── Labels & visibility flags for table columns ─── */
@@ -887,62 +834,6 @@ export function MonthlyAnalysis({
                   }
                 />
               ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </SectionCard>
-
-      {/* ─── MoM + YoY grouped comparison ─── */}
-      <SectionCard
-        title={`MoM & YoY per Kota • ${monthLabel} ${year}`}
-        description={
-          hasPrevYear
-            ? `Pertumbuhan vs ${prevPeriodLabel} (MoM) dan vs ${monthLabel} ${year - 1} (YoY).`
-            : `Pertumbuhan vs ${prevPeriodLabel} (MoM). YoY belum tersedia karena tidak ada data ${year - 1}.`
-        }
-        tag={{ label: "Growth", tone: "green" }}
-      >
-        <div className="h-[320px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={compareRows}
-              margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.06)"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: "var(--text-dim)", fontSize: 11 }}
-                axisLine={{ stroke: "var(--border-subtle)" }}
-                tickLine={false}
-                interval={0}
-                tickFormatter={(v: string) =>
-                  v.length > 9 ? v.slice(0, 8) + "…" : v
-                }
-              />
-              <YAxis
-                tick={{ fill: "var(--text-dim)", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v: number) => `${v.toFixed(0)}%`}
-                width={50}
-              />
-              <Tooltip
-                cursor={{ fill: "rgba(148,163,184,0.08)" }}
-                content={<ComparisonTooltip />}
-              />
-              <Legend
-                wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }}
-                iconType="circle"
-                iconSize={8}
-              />
-              <Bar dataKey="MoM" name="MoM %" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              {hasPrevYear && (
-                <Bar dataKey="YoY" name="YoY %" fill="#10b981" radius={[4, 4, 0, 0]} />
-              )}
             </BarChart>
           </ResponsiveContainer>
         </div>

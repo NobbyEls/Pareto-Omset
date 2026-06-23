@@ -1,21 +1,11 @@
 import { useMemo } from "react";
 import { MapPin, Wrench, TrendingUp } from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
-import {
   type JasaDatasetState,
   aggregateJasaRecords,
   KOTA_CODE_TO_NAME,
 } from "../lib/jasaDataset";
-import { formatIDR, formatIDRCompact } from "../lib/format";
+import { formatIDR } from "../lib/format";
 import { SectionCard } from "./SectionCard";
 import type { DeptFilter, KotaFilter, YearFilter } from "./Filters";
 import { KOTA_NAMES } from "../lib/csvParser";
@@ -59,39 +49,6 @@ const KOTA_GRADIENTS: Record<string, string> = {
   TEGAL: "linear-gradient(135deg, #10b981, #84cc16)",
   MADIUN: "linear-gradient(135deg, #f43f5e, #f59e0b)",
 };
-
-/* ─── Custom Tooltip ─────────────────────────────────── */
-function ChartTooltipContent({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      className="rounded-xl border px-4 py-3 text-xs shadow-lg"
-      style={{
-        background: "var(--bg-card)",
-        borderColor: "var(--border-medium)",
-        backdropFilter: "blur(12px)",
-      }}
-    >
-      <p className="mb-2 font-semibold" style={{ color: "var(--text-primary)" }}>
-        {label}
-      </p>
-      {payload.map((entry: any) => (
-        <div key={entry.name} className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{ background: entry.color }}
-            />
-            <span style={{ color: "var(--text-muted)" }}>{entry.name}</span>
-          </span>
-          <span className="font-mono font-semibold" style={{ color: entry.color }}>
-            {formatIDRCompact(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /* ─── Table Row Component ────────────────────────────── */
 function KotaRow({
@@ -287,13 +244,6 @@ export function JasaBreakdown({
     );
   }
 
-  const chartData = filtered.byMonth.map((m) => ({
-    name: m.bulan.slice(0, 3),
-    "Jasa Part": m.jasaPart,
-    "Jasa Service": m.jasaService,
-    "Jasa Sales": m.jasaSales,
-  }));
-
   const maxShare = Math.max(...filtered.byKota.map((k) => k.share), 1);
   const totalPart = filtered.byKota.reduce((s, k) => s + k.jasaPart, 0);
   const totalService = filtered.byKota.reduce((s, k) => s + k.jasaService, 0);
@@ -427,64 +377,6 @@ export function JasaBreakdown({
           </div>
         )}
       </div>
-
-      {/* Stacked bar chart - monthly trend */}
-      <SectionCard
-        title={`Tren Bulanan Jasa • ${kotaLabel} • ${yearLabel}`}
-        description={
-          includePartService
-            ? "Perbandingan Jasa Sales vs Jasa Service vs Jasa Part per bulan"
-            : `Jasa Sales per bulan • Part / Service hanya tersedia untuk tahun ${PART_SERVICE_BASELINE_YEAR}`
-        }
-        tag={{ label: "Jasa - Tren", tone: "amber" }}
-      >
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: "var(--text-dim)", fontSize: 12 }}
-                axisLine={{ stroke: "var(--border-subtle)" }}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: "var(--text-dim)", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => formatIDRCompact(v)}
-              />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Legend
-                wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }}
-              />
-              {/* Stack order: Sales (bottom) → Service → Part (top, gets rounded corners). */}
-              <Bar
-                dataKey="Jasa Sales"
-                stackId="a"
-                fill={JASA_SALES_COLOR}
-                radius={[0, 0, 0, 0]}
-              />
-              {showService && (
-                <Bar
-                  dataKey="Jasa Service"
-                  stackId="a"
-                  fill={JASA_SERVICE_COLOR}
-                  radius={[0, 0, 0, 0]}
-                />
-              )}
-              {showPart && (
-                <Bar
-                  dataKey="Jasa Part"
-                  stackId="a"
-                  fill={JASA_PART_COLOR}
-                  radius={[4, 4, 0, 0]}
-                />
-              )}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </SectionCard>
 
       {/* Table breakdown per kota */}
       <SectionCard
