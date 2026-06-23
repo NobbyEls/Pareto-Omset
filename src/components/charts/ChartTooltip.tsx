@@ -16,9 +16,23 @@ export function ChartTooltip({
 }: Props) {
   if (!active || !payload || !payload.length) return null;
 
-  const visible = payload.filter(
+  const preFiltered = payload.filter(
     (p) => p && (p.value as number) != null && p.dataKey !== "__total"
   );
+
+  // Deduplicate bridge-month: if both "YYYY" and "YYYY_est" have non-null values,
+  // hide the _est entry to avoid showing a duplicate tooltip line.
+  const visible = preFiltered.filter((p) => {
+    const key = String(p.dataKey ?? "");
+    if (key.endsWith("_est")) {
+      const baseKey = key.replace("_est", "");
+      const hasActual = preFiltered.some(
+        (other) => String(other.dataKey ?? "") === baseKey && (other.value as number) != null
+      );
+      if (hasActual) return false;
+    }
+    return true;
+  });
   const total = visible.reduce((acc, p) => acc + (Number(p.value) || 0), 0);
 
   // Detect which year keys are estimated by checking __estimated_YYYY flags in the row

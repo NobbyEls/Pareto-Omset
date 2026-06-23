@@ -32,6 +32,9 @@ export function getEstimationMultiplier(): number {
 /**
  * If the given year+monthIdx is the current month, scales the actual value
  * by the estimation multiplier. Otherwise returns the value unchanged.
+ *
+ * Guard: if dayOfMonth < 3 the multiplier would be 30x or 15x which produces
+ * absurd projections, so we return the actual value unchanged in that case.
  */
 export function estimateValue(
   actual: number,
@@ -39,6 +42,10 @@ export function estimateValue(
   monthIdx: number
 ): { value: number; isEstimated: boolean } {
   if (isCurrentMonth(year, monthIdx) && actual > 0) {
+    const dayOfMonth = new Date().getDate();
+    if (dayOfMonth < 3) {
+      return { value: actual, isEstimated: false };
+    }
     return { value: actual * getEstimationMultiplier(), isEstimated: true };
   }
   return { value: actual, isEstimated: false };
