@@ -39,7 +39,7 @@ const COLS: ColumnDef[] = [
     label: "NB",
     cellBg: "rgba(99, 102, 241, 0.06)",
     headerBg: "rgba(99, 102, 241, 0.18)",
-    accent: "#a5b4fc",
+    accent: "var(--tint-nb)",
     cellClass: "matrix-cell-nb",
     headerClass: "matrix-header-nb",
   },
@@ -48,7 +48,7 @@ const COLS: ColumnDef[] = [
     label: "PC",
     cellBg: "rgba(6, 182, 212, 0.06)",
     headerBg: "rgba(6, 182, 212, 0.18)",
-    accent: "#67e8f9",
+    accent: "var(--tint-pc)",
     cellClass: "matrix-cell-pc",
     headerClass: "matrix-header-pc",
   },
@@ -57,7 +57,7 @@ const COLS: ColumnDef[] = [
     label: "JASA",
     cellBg: "rgba(236, 72, 153, 0.06)",
     headerBg: "rgba(236, 72, 153, 0.18)",
-    accent: "#f9a8d4",
+    accent: "var(--tint-jasa)",
     cellClass: "matrix-cell-jasa",
     headerClass: "matrix-header-jasa",
   },
@@ -66,7 +66,7 @@ const COLS: ColumnDef[] = [
     label: "Total Omset",
     cellBg: "rgba(245, 158, 11, 0.06)",
     headerBg: "rgba(245, 158, 11, 0.2)",
-    accent: "#fcd34d",
+    accent: "var(--tint-share)",
     cellClass: "matrix-cell-total",
     headerClass: "matrix-header-total",
   },
@@ -268,7 +268,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 style={{ background: "transparent" }}
               >
                 <td
-                  className="sticky left-0 z-10 px-3 py-2 text-left font-medium"
+                  className="sticky left-0 z-10 px-3 py-2 text-center font-medium"
                   style={{
                     ...cellBorderStyle,
                     background: "rgba(99, 102, 241, 0.06)",
@@ -354,7 +354,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
 
           <tr className={classNames("font-bold")}>
             <td
-              className="sticky left-0 z-10 px-3 py-2.5 text-left"
+              className="sticky left-0 z-10 px-3 py-2.5 text-center"
               style={{
                 ...cellBorderStyle,
                 background:
