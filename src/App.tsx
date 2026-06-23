@@ -5,6 +5,7 @@ import { Tabs, type TabKey } from "./components/Tabs";
 import { SectionCard } from "./components/SectionCard";
 import { DataTable } from "./components/DataTable";
 import { YearlyMatrix } from "./components/YearlyMatrix";
+import { JasaMatrix } from "./components/JasaMatrix";
 import { BgDecoration } from "./components/BgDecoration";
 import { KotaBreakdown } from "./components/KotaBreakdown";
 import { JasaBreakdown } from "./components/JasaBreakdown";
@@ -190,6 +191,16 @@ export default function App() {
                   >
                     <YearlyMatrix data={viewData} year={matrixYear} estimationKey={estimationKey} />
                   </SectionCard>
+
+                  {jasaState.data && (
+                    <SectionCard
+                      title={`Matriks Bulanan Jasa ${matrixYear} \u2022 Semua Kota`}
+                      description="Breakdown Jasa Sales, Jasa Service, Jasa Part per bulan dengan MoM."
+                      tag={{ label: "Jasa \u00b7 Pivot", tone: "amber" }}
+                    >
+                      <JasaMatrix jasaState={jasaState} year={matrixYear} />
+                    </SectionCard>
+                  )}
 
                   <SectionCard
                     title={`Performa per Kota • ${matrixYear}`}

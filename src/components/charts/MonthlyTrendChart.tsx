@@ -31,7 +31,6 @@ interface Props {
 /**
  * Multi-year monthly trend (Grand Total per month, summed over selected
  * departments). Each year is rendered as a smooth area with subtle gradient.
- * The current month is shown as estimated with dashed stroke and lower opacity.
  */
 export function MonthlyTrendChart({
   data,
@@ -44,65 +43,38 @@ export function MonthlyTrendChart({
     selectedDepartments.length < DEPARTMENTS.length;
 
   const rows = useMemo(() => {
-  const result = MONTHS_ID.map((m, idx) => {
-    const r: Record<string, number | string | boolean | null> = { month: m };
-    for (const y of selectedYears) {
-      let raw: number | null;
-      if (useDeptFilter) {
-        let s = 0;
-        let any = false;
-        for (const d of selectedDepartments) {
-          const v = data.pivot[y]?.[idx]?.[d];
-          if (typeof v === "number") {
-            s += v;
-            any = true;
+    const result = MONTHS_ID.map((m, idx) => {
+      const r: Record<string, number | string | null> = { month: m };
+      for (const y of selectedYears) {
+        let raw: number | null;
+        if (useDeptFilter) {
+          let s = 0;
+          let any = false;
+          for (const d of selectedDepartments) {
+            const v = data.pivot[y]?.[idx]?.[d];
+            if (typeof v === "number") {
+              s += v;
+              any = true;
+            }
           }
-        }
-        raw = any ? s : null;
-      } else {
-        raw = totalFor(data.pivot, y, idx);
-      }
-
-      if (raw != null) {
-        const est = estimateValue(raw, y, idx);
-        if (est.isEstimated) {
-          // Put the estimated value in a separate key for dashed rendering
-          r[String(y)] = null;
-          r[`${y}_est`] = est.value;
-          r[`__estimated_${y}`] = true;
+          raw = any ? s : null;
         } else {
-          r[String(y)] = raw;
-          r[`${y}_est`] = null;
+          raw = totalFor(data.pivot, y, idx);
         }
-      } else {
-        r[String(y)] = null;
-        r[`${y}_est`] = null;
-      }
-    }
-    return r;
-  });
 
-  // For the estimated segment to connect visually, include the previous month's value
-  // in the est series as a bridge point -- only for years that actually have estimation.
-  for (let i = 1; i < result.length; i++) {
-    for (const y of selectedYears) {
-      if (result[i][`__estimated_${y}`]) {
-        // Copy previous month's value into the est series as a start point
-        const prevVal = result[i - 1][String(y)];
-        if (prevVal != null) {
-          result[i - 1][`${y}_est`] = prevVal;
+        if (raw != null) {
+          const est = estimateValue(raw, y, idx);
+          // Always use the value directly (estimated or not) - no distinction
+          r[String(y)] = est.value;
+        } else {
+          r[String(y)] = null;
         }
       }
-    }
-  }
+      return r;
+    });
 
-  return result;
+    return result;
   }, [data, selectedYears, selectedDepartments, useDeptFilter, estimationKey]);
-
-  // Determine which years have estimation (for conditional rendering)
-  const yearsWithEstimation = new Set(
-    selectedYears.filter((y) => rows.some((r) => r[`__estimated_${y}`] === true))
-  );
 
   return (
     <ResponsiveContainer width="100%" height={320}>
@@ -110,7 +82,7 @@ export function MonthlyTrendChart({
         <defs>
           {selectedYears.map((y, i) => {
             const color = YEAR_COLORS[i % YEAR_COLORS.length];
-            return [
+            return (
               <linearGradient
                 key={y}
                 id={`grad-year-${y}`}
@@ -121,19 +93,8 @@ export function MonthlyTrendChart({
               >
                 <stop offset="0%" stopColor={color} stopOpacity={0.35} />
                 <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>,
-              <linearGradient
-                key={`${y}-est`}
-                id={`grad-year-${y}-est`}
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop offset="0%" stopColor={color} stopOpacity={0.15} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>,
-            ];
+              </linearGradient>
+            );
           })}
         </defs>
         <CartesianGrid
@@ -165,11 +126,9 @@ export function MonthlyTrendChart({
           iconType="circle"
           iconSize={8}
         />
-        {selectedYears.flatMap((y, i) => {
+        {selectedYears.map((y, i) => {
           const color = YEAR_COLORS[i % YEAR_COLORS.length];
-          // Only render the _est Area if this year actually has estimated data
-          const hasEstData = yearsWithEstimation.has(y);
-          const areas = [
+          return (
             <Area
               key={y}
               type="monotone"
@@ -180,26 +139,8 @@ export function MonthlyTrendChart({
               fill={`url(#grad-year-${y})`}
               activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
               connectNulls={false}
-            />,
-          ];
-          if (hasEstData) {
-            areas.push(
-              <Area
-                key={`${y}-est`}
-                type="monotone"
-                dataKey={`${y}_est`}
-                name={`${y} (Est)`}
-                stroke={color}
-                strokeWidth={2.5}
-                strokeDasharray="5 5"
-                fill={`url(#grad-year-${y}-est)`}
-                activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
-                connectNulls={false}
-                legendType="none"
-              />
-            );
-          }
-          return areas;
+            />
+          );
         })}
       </AreaChart>
     </ResponsiveContainer>
