@@ -19,6 +19,7 @@ import { MonthlyTrendChart } from "./components/charts/MonthlyTrendChart";
 import { DepartmentDonut } from "./components/charts/DepartmentDonut";
 import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
 import { YoYChart } from "./components/charts/YoYChart";
+import { RevenueYoYBarChart } from "./components/charts/RevenueYoYBarChart";
 import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
 import { useDataset } from "./lib/dataset";
 import { useJasaDataset } from "./lib/jasaDataset";
@@ -223,6 +224,23 @@ export default function App() {
                     tag={{ label: "YoY · Trend", tone: "blue" }}
                   >
                     <MonthlyTrendChart
+                      data={viewData}
+                      selectedYears={trendYears}
+                      selectedDepartments={visibleDepartments}
+                      estimationKey={estimationKey}
+                    />
+                  </SectionCard>
+
+                  <SectionCard
+                    title={`Revenue Bulanan • Year over Year • ${kotaLabel}`}
+                    description={
+                      trendYears.length > 1
+                        ? `Total revenue per bulan • ${trendYears.join(" vs ")}`
+                        : `Total revenue per bulan • ${matrixYear}`
+                    }
+                    tag={{ label: "YoY · Revenue", tone: "green" }}
+                  >
+                    <RevenueYoYBarChart
                       data={viewData}
                       selectedYears={trendYears}
                       selectedDepartments={visibleDepartments}
