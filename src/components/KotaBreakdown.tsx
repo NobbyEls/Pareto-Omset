@@ -4,9 +4,11 @@ import {
   KOTA_NAMES,
   type KotaCode,
   type ParsedDataset,
+  kotaMonthValue,
   kotaTotalForYear,
 } from "../lib/csvParser";
 import { formatIDR, formatIDRCompact, classNames } from "../lib/format";
+import { estimateValue } from "../lib/estimation";
 
 interface Props {
   data: ParsedDataset;
@@ -22,19 +24,20 @@ interface Row {
   total: number;
   share: number;
   yoy: number | null;
+  hasEstimation: boolean;
 }
 
 type SortKey = keyof Pick<Row, "name" | "NB" | "PC" | "JASA" | "total" | "share" | "yoy">;
 
 function formatPctID(n: number | null): string {
-  if (n == null || !Number.isFinite(n)) return "—";
+  if (n == null || !Number.isFinite(n)) return "\u2014";
   const sign = n < 0 ? "-" : "";
   return `${sign}${Math.abs(n).toFixed(2).replace(".", ",")}%`;
 }
 
 function PctBadge({ value }: { value: number | null }) {
   if (value == null) {
-    return <span style={{ color: "var(--text-dim)" }}>—</span>;
+    return <span style={{ color: "var(--text-dim)" }}>&mdash;</span>;
   }
   const positive = value >= 0;
   return (
@@ -57,6 +60,26 @@ const KOTA_TINT: Record<KotaCode, string> = {
   "G-SMG": "linear-gradient(135deg, #3b82f6, #8b5cf6)",
 };
 
+/** Sum months for a kota+dept with estimation applied to the current month. */
+function kotaTotalWithEstimation(
+  pivotKota: ParsedDataset["pivotKota"],
+  year: number,
+  kota: KotaCode,
+  dept: "NB" | "PC" | "JASA"
+): { total: number; hasEstimation: boolean } {
+  let sum = 0;
+  let estimated = false;
+  for (let i = 0; i < 12; i++) {
+    const v = kotaMonthValue(pivotKota, year, i, kota, dept);
+    if (v != null) {
+      const est = estimateValue(v, year, i);
+      sum += est.value;
+      if (est.isEstimated) estimated = true;
+    }
+  }
+  return { total: sum, hasEstimation: estimated };
+}
+
 export function KotaBreakdown({ data, year }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -68,15 +91,20 @@ export function KotaBreakdown({ data, year }: Props) {
 
     let grandTotal = 0;
     const collected = data.kotas.map((k) => {
-      const NB = kotaTotalForYear(data.pivotKota, year, k, "NB");
-      const PC = kotaTotalForYear(data.pivotKota, year, k, "PC");
-      const JASA = kotaTotalForYear(data.pivotKota, year, k, "JASA");
+      const nbResult = kotaTotalWithEstimation(data.pivotKota, year, k, "NB");
+      const pcResult = kotaTotalWithEstimation(data.pivotKota, year, k, "PC");
+      const jasaResult = kotaTotalWithEstimation(data.pivotKota, year, k, "JASA");
+      const NB = nbResult.total;
+      const PC = pcResult.total;
+      const JASA = jasaResult.total;
       const total = NB + PC + JASA;
+      const hasEstimation =
+        nbResult.hasEstimation || pcResult.hasEstimation || jasaResult.hasEstimation;
       grandTotal += total;
-      return { k, NB, PC, JASA, total };
+      return { k, NB, PC, JASA, total, hasEstimation };
     });
 
-    for (const { k, NB, PC, JASA, total } of collected) {
+    for (const { k, NB, PC, JASA, total, hasEstimation } of collected) {
       const share = grandTotal > 0 ? (total / grandTotal) * 100 : 0;
       const prevTotal = hasPrev
         ? kotaTotalForYear(data.pivotKota, prevYear, k)
@@ -94,6 +122,7 @@ export function KotaBreakdown({ data, year }: Props) {
         total,
         share,
         yoy,
+        hasEstimation,
       });
     }
     return out;
@@ -133,6 +162,7 @@ export function KotaBreakdown({ data, year }: Props) {
   };
 
   const grandTotal = rows.reduce((acc, r) => acc + r.total, 0);
+  const anyEstimation = rows.some((r) => r.hasEstimation);
   const maxShare = Math.max(...rows.map((r) => r.share), 1);
 
   const Th = ({
@@ -253,6 +283,14 @@ export function KotaBreakdown({ data, year }: Props) {
                   style={{ color: "var(--text-primary)" }}
                 >
                   {formatIDR(r.total)}
+                  {r.hasEstimation && (
+                    <span
+                      className="ml-0.5 text-[10px]"
+                      style={{ color: "var(--text-dim)" }}
+                    >
+                      *
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-3 text-right">
                   <div className="flex flex-col items-end gap-1">
@@ -295,6 +333,14 @@ export function KotaBreakdown({ data, year }: Props) {
               style={{ color: "var(--tint-share)" }}
             >
               {formatIDR(grandTotal)}
+              {anyEstimation && (
+                <span
+                  className="ml-0.5 text-[10px]"
+                  style={{ color: "var(--text-dim)" }}
+                >
+                  *
+                </span>
+              )}
             </td>
             <td
               className="px-3 py-3 text-right font-mono tabular-nums"
@@ -306,6 +352,14 @@ export function KotaBreakdown({ data, year }: Props) {
           </tr>
         </tbody>
       </table>
+      {anyEstimation && (
+        <p
+          className="mt-2 text-[11px]"
+          style={{ color: "var(--text-dim)", fontStyle: "italic" }}
+        >
+          * Termasuk estimasi bulan berjalan
+        </p>
+      )}
     </div>
   );
 }

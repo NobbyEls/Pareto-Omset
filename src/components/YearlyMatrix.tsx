@@ -8,6 +8,7 @@ import {
   totalForYear,
 } from "../lib/csvParser";
 import { formatNumber, MONTHS_ID, classNames } from "../lib/format";
+import { isCurrentMonth, estimateValue } from "../lib/estimation";
 
 interface Props {
   data: ParsedDataset;
@@ -86,7 +87,7 @@ function pctChange(
 
 function PctCell({ value }: { value: number | null }) {
   if (value == null) {
-    return <span style={{ color: "var(--text-dim)" }}>—</span>;
+    return <span style={{ color: "var(--text-dim)" }}>&mdash;</span>;
   }
   const positive = value >= 0;
   return (
@@ -108,20 +109,38 @@ export function YearlyMatrix({ data, year }: Props) {
   const prevYear = year - 1;
   const hasPrevYear = data.years.includes(prevYear);
 
+  /** Get cell value with estimation applied for the current month. */
   const cellValue = (
     y: number,
     monthIdx: number,
     col: ColKey
-  ): number | null => {
-    if (col === "TOTAL") return totalFor(data.pivot, y, monthIdx);
-    const v = data.pivot[y]?.[monthIdx]?.[col];
-    return typeof v === "number" ? v : null;
+  ): { value: number | null; isEstimated: boolean } => {
+    let raw: number | null;
+    if (col === "TOTAL") {
+      raw = totalFor(data.pivot, y, monthIdx);
+    } else {
+      const v = data.pivot[y]?.[monthIdx]?.[col];
+      raw = typeof v === "number" ? v : null;
+    }
+    if (raw == null) return { value: null, isEstimated: false };
+    const est = estimateValue(raw, y, monthIdx);
+    return { value: est.value, isEstimated: est.isEstimated };
   };
 
   const totals = useMemo(() => {
     const t: Record<ColKey, number> = { NB: 0, PC: 0, JASA: 0, TOTAL: 0 };
-    for (const d of DEPARTMENTS) t[d] = deptTotalForYear(data.pivot, year, d);
-    t.TOTAL = totalForYear(data.pivot, year);
+    for (const d of DEPARTMENTS) {
+      let sum = 0;
+      for (let i = 0; i < 12; i++) {
+        const v = data.pivot[year]?.[i]?.[d];
+        if (typeof v === "number") {
+          const est = estimateValue(v, year, i);
+          sum += est.value;
+        }
+      }
+      t[d] = sum;
+    }
+    t.TOTAL = t.NB + t.PC + t.JASA;
     return t;
   }, [data, year]);
 
@@ -132,6 +151,17 @@ export function YearlyMatrix({ data, year }: Props) {
     t.TOTAL = totalForYear(data.pivot, prevYear);
     return t;
   }, [data, prevYear, hasPrevYear]);
+
+  // Check if any month in the current year has estimation applied
+  const hasEstimation = useMemo(() => {
+    for (let i = 0; i < 12; i++) {
+      if (isCurrentMonth(year, i)) {
+        const raw = totalFor(data.pivot, year, i);
+        if (raw != null) return true;
+      }
+    }
+    return false;
+  }, [data, year]);
 
   const subHeaderStyle = (col: ColumnDef) => ({
     ...cellBorderStyle,
@@ -227,73 +257,98 @@ export function YearlyMatrix({ data, year }: Props) {
         </thead>
 
         <tbody>
-          {MONTHS_ID.map((m, idx) => (
-            <tr
-              key={m}
-              className="transition-colors"
-              style={{ background: "transparent" }}
-            >
-              <td
-                className="sticky left-0 z-10 px-3 py-2 text-left font-medium"
-                style={{
-                  ...cellBorderStyle,
-                  background: "rgba(99, 102, 241, 0.06)",
-                  color: "var(--tint-year-header)",
-                }}
+          {MONTHS_ID.map((m, idx) => {
+            const isEst = isCurrentMonth(year, idx);
+            return (
+              <tr
+                key={m}
+                className="transition-colors"
+                style={{ background: "transparent" }}
               >
-                {m}
-              </td>
-              {COLS.flatMap((c) => {
-                const cur = cellValue(year, idx, c.key);
-                // MoM: bulan sebelumnya. Untuk Januari (idx 0), ambil dari
-                // Desember tahun sebelumnya supaya growth tetap terhitung.
-                const prevMonth =
-                  idx > 0
-                    ? cellValue(year, idx - 1, c.key)
-                    : hasPrevYear
-                      ? cellValue(prevYear, 11, c.key)
-                      : null;
-                const yoyPrev = hasPrevYear
-                  ? cellValue(prevYear, idx, c.key)
-                  : null;
-                const mom = pctChange(cur, prevMonth);
-                const yoy = pctChange(cur, yoyPrev);
+                <td
+                  className="sticky left-0 z-10 px-3 py-2 text-left font-medium"
+                  style={{
+                    ...cellBorderStyle,
+                    background: "rgba(99, 102, 241, 0.06)",
+                    color: "var(--tint-year-header)",
+                  }}
+                >
+                  {m}
+                </td>
+                {COLS.flatMap((c) => {
+                  const cur = cellValue(year, idx, c.key);
+                  // MoM: bulan sebelumnya. Untuk Januari (idx 0), ambil dari
+                  // Desember tahun sebelumnya supaya growth tetap terhitung.
+                  const prevMonth =
+                    idx > 0
+                      ? cellValue(year, idx - 1, c.key)
+                      : hasPrevYear
+                        ? cellValue(prevYear, 11, c.key)
+                        : { value: null, isEstimated: false };
+                  const yoyPrev = hasPrevYear
+                    ? cellValue(prevYear, idx, c.key)
+                    : { value: null, isEstimated: false };
+                  const mom = pctChange(cur.value, prevMonth.value);
+                  const yoy = pctChange(cur.value, yoyPrev.value);
 
-                return [
-                  <td
-                    key={`${m}-${c.key}-omset`}
-                    className={`px-3 py-2 text-right tabular-nums ${c.cellClass}`}
-                    style={{ ...cellBorderStyle, background: c.cellBg }}
-                  >
-                    {cur == null ? (
-                      <span style={{ color: "var(--text-dim)" }}>0</span>
-                    ) : (
-                      <span
-                        className="font-mono"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatNumber(cur)}
+                  const estStyle = isEst && cur.isEstimated
+                    ? { fontStyle: "italic" as const, opacity: 0.75 }
+                    : {};
+
+                  return [
+                    <td
+                      key={`${m}-${c.key}-omset`}
+                      className={`px-3 py-2 text-right tabular-nums ${c.cellClass}`}
+                      style={{
+                        ...cellBorderStyle,
+                        background: c.cellBg,
+                        borderLeft: isEst && cur.isEstimated
+                          ? "2px dashed var(--border-medium)"
+                          : cellBorderStyle.borderLeft,
+                      }}
+                    >
+                      {cur.value == null ? (
+                        <span style={{ color: "var(--text-dim)" }}>0</span>
+                      ) : (
+                        <span
+                          className="font-mono"
+                          style={{ color: "var(--text-primary)", ...estStyle }}
+                        >
+                          {formatNumber(cur.value)}
+                          {cur.isEstimated && (
+                            <span
+                              className="ml-1 text-[10px]"
+                              style={{ color: "var(--text-dim)" }}
+                            >
+                              (Est)
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </td>,
+                    <td
+                      key={`${m}-${c.key}-mom`}
+                      className={`px-3 py-2 text-right ${c.cellClass}`}
+                      style={{ ...cellBorderStyle, background: c.cellBg }}
+                    >
+                      <span style={estStyle}>
+                        <PctCell value={mom} />
                       </span>
-                    )}
-                  </td>,
-                  <td
-                    key={`${m}-${c.key}-mom`}
-                    className={`px-3 py-2 text-right ${c.cellClass}`}
-                    style={{ ...cellBorderStyle, background: c.cellBg }}
-                  >
-                    <PctCell value={mom} />
-                  </td>,
-                  <td
-                    key={`${m}-${c.key}-yoy`}
-                    className={`px-3 py-2 text-right ${c.cellClass}`}
-                    style={{ ...cellBorderStyle, background: c.cellBg }}
-                  >
-                    <PctCell value={yoy} />
-                  </td>,
-                ];
-              })}
-            </tr>
-          ))}
+                    </td>,
+                    <td
+                      key={`${m}-${c.key}-yoy`}
+                      className={`px-3 py-2 text-right ${c.cellClass}`}
+                      style={{ ...cellBorderStyle, background: c.cellBg }}
+                    >
+                      <span style={estStyle}>
+                        <PctCell value={yoy} />
+                      </span>
+                    </td>,
+                  ];
+                })}
+              </tr>
+            );
+          })}
 
           <tr className={classNames("font-bold")}>
             <td
@@ -306,6 +361,14 @@ export function YearlyMatrix({ data, year }: Props) {
               }}
             >
               Total
+              {hasEstimation && (
+                <span
+                  className="ml-1 text-[10px] font-normal"
+                  style={{ color: "var(--text-dim)", fontStyle: "italic" }}
+                >
+                  *
+                </span>
+              )}
             </td>
             {COLS.flatMap((c) => {
               const cur = totals[c.key];
@@ -334,7 +397,7 @@ export function YearlyMatrix({ data, year }: Props) {
                     color: "var(--text-dim)",
                   }}
                 >
-                  —
+                  &mdash;
                 </td>,
                 <td
                   key={`total-${c.key}-yoy`}
@@ -348,6 +411,14 @@ export function YearlyMatrix({ data, year }: Props) {
           </tr>
         </tbody>
       </table>
+      {hasEstimation && (
+        <p
+          className="mt-2 text-[11px]"
+          style={{ color: "var(--text-dim)", fontStyle: "italic" }}
+        >
+          * Termasuk estimasi bulan berjalan
+        </p>
+      )}
     </div>
   );
 }
