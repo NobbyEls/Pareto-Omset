@@ -164,6 +164,9 @@ export function parseJasaCSV(text: string, jasaSalesRecords: JasaSalesRecord[] =
       const parsed = parseDateDDMMYYYY(dateStr);
       if (parsed) {
         setDataDate(parsed);
+        console.log(
+          `[Pareto] Tanggal estimasi dari E1: ${dateStr} → ${parsed.toLocaleDateString("id-ID")}`
+        );
       }
     }
   }
