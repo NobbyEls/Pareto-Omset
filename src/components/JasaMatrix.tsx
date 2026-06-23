@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { JasaDatasetState, JasaMonthSummary } from "../lib/jasaDataset";
+import { aggregateJasaRecords } from "../lib/jasaDataset";
 import { formatNumber, MONTHS_ID } from "../lib/format";
 
 interface Props {
@@ -82,7 +83,19 @@ const cellBorderStyle = {
 };
 
 export function JasaMatrix({ jasaState, year }: Props) {
-  const byMonth = jasaState.data?.byMonth ?? [];
+  /**
+   * Filter records by year and re-aggregate.
+   * JasaRecords (JASA PART / JASA SERVICE) are baseline 2026 data (no year field).
+   * JasaSalesRecords DO have a year field and are filtered by the selected year.
+   */
+  const byMonth = useMemo(() => {
+    if (!jasaState.data) return [];
+    const filteredRecords = jasaState.data.records; // baseline, always included
+    const filteredSales = jasaState.data.jasaSalesRecords.filter(
+      (r) => r.year === year
+    );
+    return aggregateJasaRecords(filteredRecords, filteredSales).byMonth;
+  }, [jasaState.data, year]);
 
   /** Map bulanIndex -> JasaMonthSummary for quick lookup */
   const monthMap = useMemo(() => {
@@ -117,7 +130,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
   return (
     <div className="overflow-x-auto rounded-xl">
       <table
-        className="w-full min-w-[1100px] border-separate text-sm"
+        className="w-full min-w-[800px] border-separate text-sm"
         style={{
           borderSpacing: 0,
           borderRight: "1px solid var(--border-subtle)",
@@ -129,7 +142,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
         <thead>
           <tr>
             <th
-              colSpan={1 + COLS.length * 3}
+              colSpan={1 + COLS.length * 2}
               className="font-display px-3 py-3 text-center text-base font-bold tracking-tight"
               style={{
                 ...cellBorderStyle,
@@ -158,7 +171,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
             {COLS.map((c) => (
               <th
                 key={c.key}
-                colSpan={3}
+                colSpan={2}
                 className="font-display px-3 py-2 text-center text-xs font-bold uppercase tracking-wider"
                 style={{
                   ...cellBorderStyle,
@@ -186,13 +199,6 @@ export function JasaMatrix({ jasaState, year }: Props) {
                 style={subHeaderStyle(c)}
               >
                 MoM
-              </th>,
-              <th
-                key={`${c.key}-yoy`}
-                className={subHeaderClass}
-                style={subHeaderStyle(c)}
-              >
-                YoY
               </th>,
             ])}
           </tr>
@@ -251,14 +257,6 @@ export function JasaMatrix({ jasaState, year }: Props) {
                     >
                       <PctCell value={mom} />
                     </td>,
-                    <td
-                      key={`${m}-${c.key}-yoy`}
-                      className="px-3 py-2 text-right"
-                      style={{ ...cellBorderStyle, background: c.cellBg }}
-                    >
-                      {/* YoY: only one year of Jasa data, always show em-dash */}
-                      <span style={{ color: "var(--text-dim)" }}>&mdash;</span>
-                    </td>,
                   ];
                 })}
               </tr>
@@ -295,17 +293,6 @@ export function JasaMatrix({ jasaState, year }: Props) {
                 </td>,
                 <td
                   key={`total-${c.key}-mom`}
-                  className="px-3 py-2.5 text-right"
-                  style={{
-                    ...cellBorderStyle,
-                    background: totalBg,
-                    color: "var(--text-dim)",
-                  }}
-                >
-                  &mdash;
-                </td>,
-                <td
-                  key={`total-${c.key}-yoy`}
                   className="px-3 py-2.5 text-right"
                   style={{
                     ...cellBorderStyle,
