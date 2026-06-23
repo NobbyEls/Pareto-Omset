@@ -78,7 +78,7 @@ export function MonthlyTrendChart({
   });
 
   // For the estimated segment to connect visually, include the previous month's value
-  // in the est series as a bridge point
+  // in the est series as a bridge point — only for years that actually have estimation.
   for (let i = 1; i < rows.length; i++) {
     for (const y of selectedYears) {
       if (rows[i][`__estimated_${y}`]) {
@@ -90,6 +90,11 @@ export function MonthlyTrendChart({
       }
     }
   }
+
+  // Determine which years have estimation (for conditional rendering)
+  const yearsWithEstimation = new Set(
+    selectedYears.filter((y) => rows.some((r) => r[`__estimated_${y}`] === true))
+  );
 
   return (
     <ResponsiveContainer width="100%" height={320}>
@@ -154,7 +159,9 @@ export function MonthlyTrendChart({
         />
         {selectedYears.flatMap((y, i) => {
           const color = YEAR_COLORS[i % YEAR_COLORS.length];
-          return [
+          // Only render the _est Area if this year actually has estimated data
+          const hasEstData = yearsWithEstimation.has(y);
+          const areas = [
             <Area
               key={y}
               type="monotone"
@@ -166,20 +173,25 @@ export function MonthlyTrendChart({
               activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
               connectNulls={false}
             />,
-            <Area
-              key={`${y}-est`}
-              type="monotone"
-              dataKey={`${y}_est`}
-              name={`${y} (Est)`}
-              stroke={color}
-              strokeWidth={2.5}
-              strokeDasharray="5 5"
-              fill={`url(#grad-year-${y}-est)`}
-              activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
-              connectNulls={false}
-              legendType="none"
-            />,
           ];
+          if (hasEstData) {
+            areas.push(
+              <Area
+                key={`${y}-est`}
+                type="monotone"
+                dataKey={`${y}_est`}
+                name={`${y} (Est)`}
+                stroke={color}
+                strokeWidth={2.5}
+                strokeDasharray="5 5"
+                fill={`url(#grad-year-${y}-est)`}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
+                connectNulls={false}
+                legendType="none"
+              />
+            );
+          }
+          return areas;
         })}
       </AreaChart>
     </ResponsiveContainer>
