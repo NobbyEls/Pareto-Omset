@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { parseIDNumber, MONTHS_ID, MONTH_INDEX, type MonthId } from "./format";
 import { getWebAppUrl } from "./dataset";
 import type { KotaCode } from "./csvParser";
+import { setDataDate, parseDateDDMMYYYY } from "./estimation";
 
 /**
  * Jasa Breakdown CSV URL (gid=1300836220).
@@ -153,6 +154,19 @@ export function parseJasaCSV(text: string, jasaSalesRecords: JasaSalesRecord[] =
   const records: JasaRecord[] = [];
   const cabangSet = new Set<string>();
   const monthSet = new Set<MonthId>();
+
+  // Extract "last data date" from header row cell E1 (column index 4).
+  // Format: DD/MM/YYYY (e.g. "22/06/2026")
+  if (lines.length > 0) {
+    const headerCols = lines[0].split(",");
+    if (headerCols.length > 4) {
+      const dateStr = headerCols[4].trim();
+      const parsed = parseDateDDMMYYYY(dateStr);
+      if (parsed) {
+        setDataDate(parsed);
+      }
+    }
+  }
 
   for (const line of lines) {
     // Simple CSV split (no quoted commas in this dataset)
