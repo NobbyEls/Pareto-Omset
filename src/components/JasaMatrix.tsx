@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import type { JasaDatasetState, JasaMonthSummary } from "../lib/jasaDataset";
-import { aggregateJasaRecords } from "../lib/jasaDataset";
+import { aggregateJasaRecords, KOTA_CODE_TO_NAME } from "../lib/jasaDataset";
 import { formatNumber, MONTHS_ID } from "../lib/format";
+import { KOTA_NAMES } from "../lib/csvParser";
+import type { KotaFilter } from "./Filters";
 
 interface Props {
   jasaState: JasaDatasetState;
-  year: number;
+  selectedKota: KotaFilter;
 }
 
 interface ColumnDef {
@@ -82,20 +84,32 @@ const cellBorderStyle = {
   borderLeft: "1px solid var(--border-subtle)",
 };
 
-export function JasaMatrix({ jasaState, year }: Props) {
+export function JasaMatrix({ jasaState, selectedKota }: Props) {
   /**
-   * Filter records by year and re-aggregate.
-   * JasaRecords (JASA PART / JASA SERVICE) are baseline 2026 data (no year field).
-   * JasaSalesRecords DO have a year field and are filtered by the selected year.
+   * JasaMatrix ALWAYS reads 2026 data only (breakdown hanya mulai 2026).
+   * Tidak terpengaruh filter Tahun atau Departemen — hanya filter Kota.
    */
+  const FIXED_YEAR = 2026;
+
+  const kotaLabel =
+    selectedKota === "all" ? "Semua Kota" : KOTA_NAMES[selectedKota];
+  const targetCabang =
+    selectedKota === "all"
+      ? null
+      : (KOTA_CODE_TO_NAME as Record<string, string | undefined>)[selectedKota] ?? null;
+
   const byMonth = useMemo(() => {
     if (!jasaState.data) return [];
-    const filteredRecords = jasaState.data.records; // baseline, always included
-    const filteredSales = jasaState.data.jasaSalesRecords.filter(
-      (r) => r.year === year
-    );
+    const filteredRecords = targetCabang
+      ? jasaState.data.records.filter((r) => r.cabang === targetCabang)
+      : jasaState.data.records;
+    const filteredSales = jasaState.data.jasaSalesRecords.filter((r) => {
+      if (r.year !== FIXED_YEAR) return false;
+      if (targetCabang && r.cabang !== targetCabang) return false;
+      return true;
+    });
     return aggregateJasaRecords(filteredRecords, filteredSales).byMonth;
-  }, [jasaState.data, year]);
+  }, [jasaState.data, targetCabang]);
 
   /** Map bulanIndex -> JasaMonthSummary for quick lookup */
   const monthMap = useMemo(() => {
@@ -152,7 +166,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
                 letterSpacing: "0.04em",
               }}
             >
-              Jasa {year}
+              Jasa 2026 • {kotaLabel}
             </th>
           </tr>
 
