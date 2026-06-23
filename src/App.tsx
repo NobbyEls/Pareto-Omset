@@ -18,7 +18,6 @@ import { LoadingOverlay } from "./components/LoadingOverlay";
 import { MonthlyTrendChart } from "./components/charts/MonthlyTrendChart";
 import { DepartmentDonut } from "./components/charts/DepartmentDonut";
 import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
-import { YoYChart } from "./components/charts/YoYChart";
 import { RevenueYoYBarChart } from "./components/charts/RevenueYoYBarChart";
 import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
 import { useDataset } from "./lib/dataset";
@@ -136,14 +135,6 @@ export default function App() {
     if (viewData.years.includes(prev)) out.unshift(prev);
     return out;
   }, [ready, viewData, primaryYear]);
-
-  const yoyAvailable = useMemo(
-    () =>
-      ready &&
-      matrixYear != null &&
-      viewData!.years.includes(matrixYear - 1),
-    [ready, viewData, matrixYear]
-  );
 
   const handleReset = () => {
     setPrimaryYear("all");
@@ -318,20 +309,6 @@ export default function App() {
                       selectedDepartments={visibleDepartments}
                     />
                   </SectionCard>
-
-                  {yoyAvailable && (
-                    <SectionCard
-                      title={`Year-over-Year • ${matrixYear} vs ${matrixYear - 1}`}
-                      description={`Bandingkan omset bulanan dan persentase pertumbuhan tahunan • ${kotaLabel}`}
-                      tag={{ label: "YoY · Growth", tone: "green" }}
-                    >
-                      <YoYChart
-                        data={viewData}
-                        primaryYear={matrixYear}
-                        selectedDepartments={visibleDepartments}
-                      />
-                    </SectionCard>
-                  )}
 
                   <DataTable
                     data={viewData}
