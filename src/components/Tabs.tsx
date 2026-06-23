@@ -30,7 +30,7 @@ export function Tabs({ active, onChange }: TabsProps) {
     <div
       role="tablist"
       aria-label="Mode analisa"
-      className="inline-flex w-full max-w-md items-center gap-1 rounded-xl p-1 animate-fadeIn sm:w-auto"
+      className="inline-flex w-full items-center gap-1 rounded-xl p-1 animate-fadeIn"
       style={{
         background: "var(--bg-glass)",
         border: "1px solid var(--border-subtle)",
@@ -44,7 +44,7 @@ export function Tabs({ active, onChange }: TabsProps) {
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(t.key)}
-            className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all sm:flex-initial"
+            className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all"
             style={{
               background: isActive ? "var(--grad-primary)" : "transparent",
               color: isActive ? "#fff" : "var(--text-muted)",

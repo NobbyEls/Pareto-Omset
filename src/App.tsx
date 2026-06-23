@@ -27,6 +27,7 @@ import {
   KOTA_NAMES,
   pivotForKota,
   type Department,
+  type KotaCode,
   type ParsedDataset,
 } from "./lib/csvParser";
 
@@ -45,6 +46,7 @@ export default function App() {
   const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
   const [selectedDept, setSelectedDept] = useState<DeptFilter>("all");
   const [activeTab, setActiveTab] = useState<TabKey>("yearly");
+  const [selectedMonth, setSelectedMonth] = useState<number>(0);
 
   useEffect(() => {
     if (!data) return;
@@ -83,6 +85,46 @@ export default function App() {
     () => (selectedDept === "all" ? [...DEPARTMENTS] : [selectedDept]),
     [selectedDept]
   );
+
+  /** Visible kotas based on the global kota filter. */
+  const visibleKotas: KotaCode[] = useMemo(
+    () => (data ? (selectedKota === "all" ? data.kotas : [selectedKota]) : []),
+    [data, selectedKota]
+  );
+
+  /** Available months for the monthly tab (months that have data for current filters). */
+  const availableMonths: number[] = useMemo(() => {
+    if (!data || matrixYear == null) return [];
+    const months: number[] = [];
+    for (let m = 0; m < 12; m++) {
+      for (const k of visibleKotas) {
+        const cell = data.pivotKota[matrixYear]?.[m]?.[k];
+        if (!cell) continue;
+        let any = false;
+        for (const d of visibleDepartments) {
+          if (typeof cell[d] === "number") { any = true; break; }
+        }
+        if (any) { months.push(m); break; }
+      }
+    }
+    return months;
+  }, [data, matrixYear, visibleKotas, visibleDepartments]);
+
+  // Snap selectedMonth into availableMonths when filters change.
+  useEffect(() => {
+    if (availableMonths.length === 0) return;
+    if (!availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    }
+  }, [availableMonths, selectedMonth]);
+
+  // Initialize selectedMonth to latest available month on first data load.
+  useEffect(() => {
+    if (availableMonths.length > 0 && selectedMonth === 0 && !availableMonths.includes(0)) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableMonths]);
 
   /** Trend chart years: when "all", overlay every year in the dataset. */
   const trendYears = useMemo(() => {
@@ -149,6 +191,10 @@ export default function App() {
               onKotaChange={setSelectedKota}
               selectedDept={selectedDept}
               onDeptChange={setSelectedDept}
+              activeTab={activeTab}
+              selectedMonth={selectedMonth}
+              onMonthChange={setSelectedMonth}
+              availableMonths={availableMonths}
               onReset={handleReset}
             />
           )}
@@ -282,6 +328,7 @@ export default function App() {
                   selectedKota={selectedKota}
                   selectedDept={selectedDept}
                   visibleDepartments={visibleDepartments}
+                  selectedMonth={selectedMonth}
                 />
               )}
 
