@@ -37,26 +37,28 @@ export function parseDateDDMMYYYY(str: string): Date | null {
   return new Date(year, month - 1, day);
 }
 
-/** Get the effective reference date (data date or fallback to today). */
-function getReferenceDate(): Date {
-  return _dataDate ?? new Date();
+/** Get the effective reference date. Returns null if not yet set. */
+function getReferenceDate(): Date | null {
+  return _dataDate;
 }
 
 /**
  * Checks if the given year + monthIdx (0-indexed) matches the reference date's
- * year and month.
+ * year and month. Returns false if reference date is not yet set.
  */
 export function isCurrentMonth(year: number, monthIdx: number): boolean {
   const ref = getReferenceDate();
+  if (!ref) return false; // Not yet loaded — don't estimate
   return year === ref.getFullYear() && monthIdx === ref.getMonth();
 }
 
 /**
  * Returns daysInMonth / dayOfMonth for the reference date.
- * This is the multiplier to project partial-month data to a full-month estimate.
+ * Returns 1 (no scaling) if reference date is not yet set.
  */
 export function getEstimationMultiplier(): number {
   const ref = getReferenceDate();
+  if (!ref) return 1; // Not yet loaded — no scaling
   const dayOfMonth = ref.getDate();
   const daysInMonth = new Date(
     ref.getFullYear(),
@@ -71,6 +73,10 @@ export function getEstimationMultiplier(): number {
  * the actual value by the estimation multiplier. Otherwise returns the value
  * unchanged.
  *
+ * IMPORTANT: If reference date is not yet set (_dataDate is null), this
+ * function returns the actual value UNCHANGED (no estimation applied).
+ * This prevents wrong calculations when main data loads before Jasa CSV.
+ *
  * Guard: if dayOfMonth < 3 the multiplier would be 30x or 15x which produces
  * absurd projections, so we return the actual value unchanged in that case.
  */
@@ -79,8 +85,9 @@ export function estimateValue(
   year: number,
   monthIdx: number
 ): { value: number; isEstimated: boolean } {
+  const ref = getReferenceDate();
+  if (!ref) return { value: actual, isEstimated: false }; // Not ready yet
   if (isCurrentMonth(year, monthIdx) && actual > 0) {
-    const ref = getReferenceDate();
     const dayOfMonth = ref.getDate();
     if (dayOfMonth < 3) {
       return { value: actual, isEstimated: false };
