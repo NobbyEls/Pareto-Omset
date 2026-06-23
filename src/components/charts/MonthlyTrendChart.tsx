@@ -16,6 +16,7 @@ import {
   DEPARTMENTS,
 } from "../../lib/csvParser";
 import { YEAR_COLORS } from "../../lib/theme";
+import { estimateValue } from "../../lib/estimation";
 import { ChartTooltip } from "./ChartTooltip";
 
 interface Props {
@@ -27,6 +28,7 @@ interface Props {
 /**
  * Multi-year monthly trend (Grand Total per month, summed over selected
  * departments). Each year is rendered as a smooth area with subtle gradient.
+ * The current month is shown as estimated with dashed stroke and lower opacity.
  */
 export function MonthlyTrendChart({
   data,
@@ -38,8 +40,9 @@ export function MonthlyTrendChart({
     selectedDepartments.length < DEPARTMENTS.length;
 
   const rows = MONTHS_ID.map((m, idx) => {
-    const r: Record<string, number | string | null> = { month: m };
+    const r: Record<string, number | string | boolean | null> = { month: m };
     for (const y of selectedYears) {
+      let raw: number | null;
       if (useDeptFilter) {
         let s = 0;
         let any = false;
@@ -50,13 +53,43 @@ export function MonthlyTrendChart({
             any = true;
           }
         }
-        r[String(y)] = any ? s : null;
+        raw = any ? s : null;
       } else {
-        r[String(y)] = totalFor(data.pivot, y, idx);
+        raw = totalFor(data.pivot, y, idx);
+      }
+
+      if (raw != null) {
+        const est = estimateValue(raw, y, idx);
+        if (est.isEstimated) {
+          // Put the estimated value in a separate key for dashed rendering
+          r[String(y)] = null;
+          r[`${y}_est`] = est.value;
+          r[`__estimated_${y}`] = true;
+        } else {
+          r[String(y)] = raw;
+          r[`${y}_est`] = null;
+        }
+      } else {
+        r[String(y)] = null;
+        r[`${y}_est`] = null;
       }
     }
     return r;
   });
+
+  // For the estimated segment to connect visually, include the previous month's value
+  // in the est series as a bridge point
+  for (let i = 1; i < rows.length; i++) {
+    for (const y of selectedYears) {
+      if (rows[i][`__estimated_${y}`]) {
+        // Copy previous month's value into the est series as a start point
+        const prevVal = rows[i - 1][String(y)];
+        if (prevVal != null) {
+          rows[i - 1][`${y}_est`] = prevVal;
+        }
+      }
+    }
+  }
 
   return (
     <ResponsiveContainer width="100%" height={320}>
@@ -64,7 +97,7 @@ export function MonthlyTrendChart({
         <defs>
           {selectedYears.map((y, i) => {
             const color = YEAR_COLORS[i % YEAR_COLORS.length];
-            return (
+            return [
               <linearGradient
                 key={y}
                 id={`grad-year-${y}`}
@@ -75,8 +108,19 @@ export function MonthlyTrendChart({
               >
                 <stop offset="0%" stopColor={color} stopOpacity={0.35} />
                 <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            );
+              </linearGradient>,
+              <linearGradient
+                key={`${y}-est`}
+                id={`grad-year-${y}-est`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor={color} stopOpacity={0.15} />
+                <stop offset="100%" stopColor={color} stopOpacity={0} />
+              </linearGradient>,
+            ];
           })}
         </defs>
         <CartesianGrid
@@ -108,9 +152,9 @@ export function MonthlyTrendChart({
           iconType="circle"
           iconSize={8}
         />
-        {selectedYears.map((y, i) => {
+        {selectedYears.flatMap((y, i) => {
           const color = YEAR_COLORS[i % YEAR_COLORS.length];
-          return (
+          return [
             <Area
               key={y}
               type="monotone"
@@ -121,8 +165,21 @@ export function MonthlyTrendChart({
               fill={`url(#grad-year-${y})`}
               activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
               connectNulls={false}
-            />
-          );
+            />,
+            <Area
+              key={`${y}-est`}
+              type="monotone"
+              dataKey={`${y}_est`}
+              name={`${y} (Est)`}
+              stroke={color}
+              strokeWidth={2.5}
+              strokeDasharray="5 5"
+              fill={`url(#grad-year-${y}-est)`}
+              activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
+              connectNulls={false}
+              legendType="none"
+            />,
+          ];
         })}
       </AreaChart>
     </ResponsiveContainer>
