@@ -405,14 +405,12 @@ export function JasaBreakdown({
                     "Total",
                     "% Share",
                   ] as string[]
-                ).map((col, i) => (
+                ).map((col) => (
                   <th
                     key={col}
-                    className={`px-3 py-2.5 text-xs font-bold uppercase tracking-wider ${
-                      i === 0 ? "text-left" : "text-right"
-                    }`}
+                    className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wider"
                     style={{
-                      color: "var(--text-dim)",
+                      color: "var(--th-color)",
                       background: "rgba(99, 102, 241, 0.08)",
                       borderBottom: "1px solid var(--border-subtle)",
                     }}

@@ -172,7 +172,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
   });
 
   const subHeaderClass = (col: ColumnDef) =>
-    `px-3 py-1.5 text-right text-[11px] font-bold uppercase tracking-wider ${col.headerClass}`;
+    `px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wider ${col.headerClass}`;
 
   return (
     <div className="overflow-x-auto rounded-xl">

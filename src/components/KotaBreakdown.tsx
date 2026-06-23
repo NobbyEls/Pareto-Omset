@@ -7,7 +7,7 @@ import {
   kotaMonthValue,
   kotaTotalForYear,
 } from "../lib/csvParser";
-import { formatIDR, formatIDRCompact, classNames } from "../lib/format";
+import { formatIDR, formatIDRCompact } from "../lib/format";
 import { estimateValue } from "../lib/estimation";
 
 interface Props {
@@ -170,35 +170,25 @@ export function KotaBreakdown({ data, year, estimationKey }: Props) {
   const Th = ({
     k,
     label,
-    align = "right",
   }: {
     k: SortKey;
     label: string;
-    align?: "left" | "right";
   }) => (
     <th
       onClick={() => onSort(k)}
-      className={classNames(
-        "cursor-pointer select-none px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition",
-        align === "right" ? "text-right" : "text-left"
-      )}
+      className="cursor-pointer select-none px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wider transition"
       style={{
-        color: sortKey === k ? "var(--tint-year-header)" : "var(--text-dim)",
+        color: sortKey === k ? "var(--tint-year-header)" : "var(--th-color)",
         background: "rgba(99, 102, 241, 0.08)",
         borderBottom: "1px solid var(--border-subtle)",
       }}
     >
-      <span
-        className={classNames(
-          "inline-flex items-center gap-1",
-          align === "right" && "flex-row-reverse"
-        )}
-      >
+      <span className="inline-flex items-center justify-center gap-1">
         {label}
         <ArrowUpDown
           className="h-3 w-3 transition"
           style={{
-            color: sortKey === k ? "var(--tint-nb)" : "var(--text-dim)",
+            color: sortKey === k ? "var(--tint-nb)" : "var(--th-color)",
           }}
         />
       </span>
@@ -218,7 +208,7 @@ export function KotaBreakdown({ data, year, estimationKey }: Props) {
       >
         <thead>
           <tr>
-            <Th k="name" label="Kota" align="left" />
+            <Th k="name" label="Kota" />
             <Th k="NB" label="NB" />
             <Th k="PC" label="PC" />
             <Th k="JASA" label="JASA" />
