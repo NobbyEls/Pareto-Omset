@@ -11,7 +11,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import {
-  useJasaDataset,
+  type JasaDatasetState,
   aggregateJasaRecords,
   KOTA_CODE_TO_NAME,
 } from "../lib/jasaDataset";
@@ -21,6 +21,7 @@ import type { DeptFilter, KotaFilter, YearFilter } from "./Filters";
 import { KOTA_NAMES } from "../lib/csvParser";
 
 interface JasaBreakdownProps {
+  jasaState: JasaDatasetState;
   selectedYear: YearFilter;
   selectedKota: KotaFilter;
   selectedDept: DeptFilter;
@@ -189,13 +190,14 @@ function KotaRow({
 
 /* ─── Main Component ─────────────────────────────────── */
 export function JasaBreakdown({
+  jasaState,
   selectedYear,
   selectedKota,
   selectedDept,
 }: JasaBreakdownProps) {
-  // Hook calls always run first to satisfy rules of hooks; we decide
-  // whether to render afterwards.
-  const { data: rawData, loading, error } = useJasaDataset();
+  // Use the Jasa dataset state passed from App (lifted to ensure setDataDate()
+  // is called before estimation-dependent components render).
+  const { data: rawData, loading, error } = jasaState;
 
   // Should we keep Jasa Part / Jasa Service rows for the active year filter?
   // They have no year field, so we treat them as belonging to PART_SERVICE_BASELINE_YEAR.
