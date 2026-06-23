@@ -391,28 +391,11 @@ const JASA_CACHE_KEY = "pareto-jasa-cache";
 const JASA_CACHE_TS_KEY = "pareto-jasa-cache-ts";
 const JASA_SALES_CACHE_KEY = "pareto-jasa-sales-cache";
 
-function loadJasaCache(): { text: string; ts: Date } | null {
-  try {
-    const text = localStorage.getItem(JASA_CACHE_KEY);
-    const tsStr = localStorage.getItem(JASA_CACHE_TS_KEY);
-    if (text && tsStr) return { text, ts: new Date(tsStr) };
-  } catch (_) {}
-  return null;
-}
-
 function saveJasaCache(text: string): void {
   try {
     localStorage.setItem(JASA_CACHE_KEY, text);
     localStorage.setItem(JASA_CACHE_TS_KEY, new Date().toISOString());
   } catch (_) {}
-}
-
-function loadJasaSalesCache(): JasaSalesRecord[] {
-  try {
-    const raw = localStorage.getItem(JASA_SALES_CACHE_KEY);
-    if (raw) return JSON.parse(raw) as JasaSalesRecord[];
-  } catch (_) {}
-  return [];
 }
 
 function saveJasaSalesCache(records: JasaSalesRecord[]): void {
@@ -451,41 +434,8 @@ export function useJasaDataset(): JasaDatasetState {
 
   const updateData = useCallback(() => setForceUpdate((t) => t + 1), []);
 
-  // On mount: try cache — but only if jasa sales cache also exists
+  // On mount: always fetch fresh data (no cache on initial load).
   useEffect(() => {
-    const cached = loadJasaCache();
-    const cachedSales = loadJasaSalesCache();
-    // Only use cache if we have BOTH jasa records AND sales records cached
-    if (cached && cachedSales.length > 0) {
-      // Cache validation: the cached CSV must contain a valid date in cell
-      // E1 (header[4]) — added later in the sheet. If absent (cache from
-      // before E1 was added), skip the cache and force a fresh fetch so the
-      // estimation date pipeline gets the correct reference date.
-      const firstLine = cached.text.split("\n")[0]?.trim() ?? "";
-      const headerCols = firstLine.split(",");
-      const cachedDate =
-        headerCols.length > 4
-          ? parseDateDDMMYYYY(headerCols[4].trim())
-          : null;
-      if (!cachedDate) {
-        // Old-format cache → evict and refetch
-        try {
-          localStorage.removeItem(JASA_CACHE_KEY);
-          localStorage.removeItem(JASA_CACHE_TS_KEY);
-          localStorage.removeItem(JASA_SALES_CACHE_KEY);
-        } catch (_) {}
-        setForceUpdate(1);
-        return;
-      }
-      const parsed = parseJasaCSV(cached.text, cachedSales);
-      if (parsed.records.length > 0) {
-        setData(parsed);
-        setFromCache(true);
-        setLoading(false);
-        return;
-      }
-    }
-    // No valid cache (or sales cache missing) — fetch fresh
     setForceUpdate(1);
   }, []);
 

@@ -19,8 +19,6 @@ const HARDCODED_WEB_APP_URL =
 const CACHE_KEY = "pareto-omset-cache";
 const CACHE_TS_KEY = "pareto-omset-cache-ts";
 
-/** Background revalidation kicks in when cache is older than this. */
-const STALE_AFTER_HOURS = 6;
 
 /** "Update Data" retries this many times with this delay before giving up. */
 const MAX_RETRIES = 6;
@@ -51,17 +49,6 @@ export function getWebAppUrl(): string {
 }
 
 /* ───── Cache helpers ───── */
-
-function loadCache(): { text: string; ts: Date } | null {
-  try {
-    const text = localStorage.getItem(CACHE_KEY);
-    const tsStr = localStorage.getItem(CACHE_TS_KEY);
-    if (text && tsStr) return { text, ts: new Date(tsStr) };
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 function saveCache(text: string): void {
   try {
@@ -248,40 +235,13 @@ export function useDataset(): DatasetState {
     return () => controller.abort();
   }, []);
 
-  // On mount: load cache instantly, then revalidate in background if stale.
+  // On mount: always fetch fresh data from network.
+  // Cache is still saved on successful fetch (for potential future offline use)
+  // but NOT served on initial load — data is always live.
   useEffect(() => {
-    const cached = loadCache();
-    let scheduledFetch = false;
-
-    if (cached) {
-      const parsed = parseCSV(cached.text);
-      if (parsed.records.length > 0 && parsed.years.length > 0) {
-        setData(parsed);
-        setFetchedAt(cached.ts);
-        setFromCache(true);
-        setLoading(false);
-
-        const ageHours = (Date.now() - cached.ts.getTime()) / 3_600_000;
-        const stale = ageHours > STALE_AFTER_HOURS;
-        setIsStale(stale);
-
-        // Stale-while-revalidate: trigger background refresh if old.
-        if (stale) {
-          console.log(
-            `[Pareto] Cache is ${ageHours.toFixed(1)}h old, refreshing in background...`
-          );
-          scheduledFetch = true;
-          return runFetch(false);
-        }
-        return;
-      }
-    }
-
-    // No usable cache — full network load.
-    if (!scheduledFetch) {
-      return runFetch(true);
-    }
-  }, [runFetch]);
+    return runFetch(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateData = useCallback(() => {
     runFetch(false);
