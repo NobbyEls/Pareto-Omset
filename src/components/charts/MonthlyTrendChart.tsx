@@ -44,7 +44,7 @@ export function MonthlyTrendChart({
 
   const rows = useMemo(() => {
     const result = MONTHS_ID.map((m, idx) => {
-      const r: Record<string, number | string | null> = { month: m };
+      const r: Record<string, number | string | boolean | null> = { month: m };
       for (const y of selectedYears) {
         let raw: number | null;
         if (useDeptFilter) {
@@ -64,8 +64,11 @@ export function MonthlyTrendChart({
 
         if (raw != null) {
           const est = estimateValue(raw, y, idx);
-          // Always use the value directly (estimated or not) - no distinction
           r[String(y)] = est.value;
+          // Flag for tooltip to show "(Est)" label
+          if (est.isEstimated) {
+            r[`__estimated_${y}`] = true;
+          }
         } else {
           r[String(y)] = null;
         }
