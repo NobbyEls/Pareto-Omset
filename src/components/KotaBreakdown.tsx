@@ -13,6 +13,8 @@ import { estimateValue } from "../lib/estimation";
 interface Props {
   data: ParsedDataset;
   year: number;
+  /** Changes when setDataDate() completes, forcing memo recalculation. */
+  estimationKey: number;
 }
 
 interface Row {
@@ -80,7 +82,7 @@ function kotaTotalWithEstimation(
   return { total: sum, hasEstimation: estimated };
 }
 
-export function KotaBreakdown({ data, year }: Props) {
+export function KotaBreakdown({ data, year, estimationKey }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -126,7 +128,7 @@ export function KotaBreakdown({ data, year }: Props) {
       });
     }
     return out;
-  }, [data, year]);
+  }, [data, year, estimationKey]);
 
   const sorted = useMemo(() => {
     const list = [...rows];
