@@ -13,6 +13,8 @@ import { isCurrentMonth, estimateValue } from "../lib/estimation";
 interface Props {
   data: ParsedDataset;
   year: number;
+  /** Changes when setDataDate() completes, forcing memo recalculation. */
+  estimationKey: number;
 }
 
 type ColKey = Department | "TOTAL";
@@ -105,7 +107,7 @@ const cellBorderStyle = {
   borderLeft: "1px solid var(--border-subtle)",
 };
 
-export function YearlyMatrix({ data, year }: Props) {
+export function YearlyMatrix({ data, year, estimationKey }: Props) {
   const prevYear = year - 1;
   const hasPrevYear = data.years.includes(prevYear);
 
@@ -142,7 +144,7 @@ export function YearlyMatrix({ data, year }: Props) {
     }
     t.TOTAL = t.NB + t.PC + t.JASA;
     return t;
-  }, [data, year]);
+  }, [data, year, estimationKey]);
 
   const prevTotals = useMemo(() => {
     const t: Record<ColKey, number> = { NB: 0, PC: 0, JASA: 0, TOTAL: 0 };
@@ -161,7 +163,7 @@ export function YearlyMatrix({ data, year }: Props) {
       }
     }
     return false;
-  }, [data, year]);
+  }, [data, year, estimationKey]);
 
   const subHeaderStyle = (col: ColumnDef) => ({
     ...cellBorderStyle,

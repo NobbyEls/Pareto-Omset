@@ -32,8 +32,13 @@ import {
 export default function App() {
   const { data, loading, refreshing, error, fetchedAt, fromCache, isStale, updateData } = useDataset();
   // Lift Jasa dataset to App level so setDataDate() is called as early as
-  // possible — before estimation-dependent components first render.
+  // possible -- before estimation-dependent components first render.
   const jasaState = useJasaDataset();
+
+  // When jasaState.data transitions from null to non-null, parseJasaCSV has
+  // run and setDataDate() was called. Components that use estimateValue() need
+  // to re-run their memos. This key flips 0->1 to invalidate those memos.
+  const estimationKey = jasaState.data ? 1 : 0;
 
   const [primaryYear, setPrimaryYear] = useState<YearFilter>("all");
   const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
@@ -174,6 +179,7 @@ export default function App() {
                       data={viewData}
                       selectedYears={trendYears}
                       selectedDepartments={visibleDepartments}
+                      estimationKey={estimationKey}
                     />
                   </SectionCard>
 
@@ -182,7 +188,7 @@ export default function App() {
                     description="Omset, MoM (Month-over-Month) & YoY (Year-over-Year) per departemen + total. MoM bulan Januari dihitung dari Desember tahun sebelumnya."
                     tag={{ label: "Tahunan · Pivot", tone: "purple" }}
                   >
-                    <YearlyMatrix data={viewData} year={matrixYear} />
+                    <YearlyMatrix data={viewData} year={matrixYear} estimationKey={estimationKey} />
                   </SectionCard>
 
                   <SectionCard
@@ -190,7 +196,7 @@ export default function App() {
                     description="Total omset per cabang dengan share kontribusi dan YoY. Klik header untuk mengurutkan."
                     tag={{ label: "Kota · Breakdown", tone: "amber" }}
                   >
-                    <KotaBreakdown data={data} year={matrixYear} />
+                    <KotaBreakdown data={data} year={matrixYear} estimationKey={estimationKey} />
                   </SectionCard>
 
                   <JasaBreakdown

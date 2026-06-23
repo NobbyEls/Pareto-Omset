@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -23,6 +24,8 @@ interface Props {
   data: ParsedDataset;
   selectedYears: number[];
   selectedDepartments: Department[];
+  /** Changes when setDataDate() completes, forcing memo recalculation. */
+  estimationKey: number;
 }
 
 /**
@@ -34,12 +37,14 @@ export function MonthlyTrendChart({
   data,
   selectedYears,
   selectedDepartments,
+  estimationKey,
 }: Props) {
   const useDeptFilter =
     selectedDepartments.length > 0 &&
     selectedDepartments.length < DEPARTMENTS.length;
 
-  const rows = MONTHS_ID.map((m, idx) => {
+  const rows = useMemo(() => {
+  const result = MONTHS_ID.map((m, idx) => {
     const r: Record<string, number | string | boolean | null> = { month: m };
     for (const y of selectedYears) {
       let raw: number | null;
@@ -78,18 +83,21 @@ export function MonthlyTrendChart({
   });
 
   // For the estimated segment to connect visually, include the previous month's value
-  // in the est series as a bridge point — only for years that actually have estimation.
-  for (let i = 1; i < rows.length; i++) {
+  // in the est series as a bridge point -- only for years that actually have estimation.
+  for (let i = 1; i < result.length; i++) {
     for (const y of selectedYears) {
-      if (rows[i][`__estimated_${y}`]) {
+      if (result[i][`__estimated_${y}`]) {
         // Copy previous month's value into the est series as a start point
-        const prevVal = rows[i - 1][String(y)];
+        const prevVal = result[i - 1][String(y)];
         if (prevVal != null) {
-          rows[i - 1][`${y}_est`] = prevVal;
+          result[i - 1][`${y}_est`] = prevVal;
         }
       }
     }
   }
+
+  return result;
+  }, [data, selectedYears, selectedDepartments, useDeptFilter, estimationKey]);
 
   // Determine which years have estimation (for conditional rendering)
   const yearsWithEstimation = new Set(
