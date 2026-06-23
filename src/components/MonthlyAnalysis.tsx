@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowUpDown,
-  CalendarDays,
   Crown,
   MapPin,
   TrendingDown,
@@ -50,11 +49,13 @@ const KOTA_TINT: Record<KotaCode, string> = {
 
 interface Props {
   data: ParsedDataset;
-  /** Resolved year (already collapsed from "Semua Tahun" → latest year). */
+  /** Resolved year (already collapsed from "Semua Tahun" -> latest year). */
   year: number;
   selectedKota: KotaFilter;
   selectedDept: DeptFilter;
   visibleDepartments: Department[];
+  /** Currently selected month index (0-based). Managed by App. */
+  selectedMonth: number;
 }
 
 /* ─── Small util helpers ───────────────────────────────────────────── */
@@ -173,6 +174,7 @@ export function MonthlyAnalysis({
   selectedKota,
   selectedDept,
   visibleDepartments,
+  selectedMonth,
 }: Props) {
   // Cities to render in the table (after global kota filter).
   const visibleKotas: KotaCode[] = useMemo(
@@ -215,18 +217,6 @@ export function MonthlyAnalysis({
     return months;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, visibleKotas, visibleDepartments, data]);
-
-  const [selectedMonth, setSelectedMonth] = useState<number>(() =>
-    availableMonths.length > 0 ? availableMonths[availableMonths.length - 1] : 0
-  );
-
-  // Snap `selectedMonth` back into `availableMonths` whenever filters change.
-  useEffect(() => {
-    if (availableMonths.length === 0) return;
-    if (!availableMonths.includes(selectedMonth)) {
-      setSelectedMonth(availableMonths[availableMonths.length - 1]);
-    }
-  }, [availableMonths, selectedMonth]);
 
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -486,55 +476,6 @@ export function MonthlyAnalysis({
 
   return (
     <div className="space-y-5">
-      {/* ─── Month picker ─── */}
-      <div className="glass-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="grid h-10 w-10 place-items-center rounded-xl text-white"
-            style={{
-              background: "var(--grad-primary)",
-              boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3)",
-            }}
-          >
-            <CalendarDays className="h-5 w-5" />
-          </div>
-          <div>
-            <div
-              className="text-[11px] font-semibold uppercase tracking-wider"
-              style={{ color: "var(--text-dim)" }}
-            >
-              Pilih Bulan
-            </div>
-            <div
-              className="font-display text-base font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {monthLabel} {year}
-              <span
-                className="ml-2 text-xs font-normal"
-                style={{ color: "var(--text-muted)" }}
-              >
-                · {kotaFilterLabel} · {deptFilterLabel}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="filter-group min-w-[180px]">
-          <label htmlFor="month-picker">Bulan</label>
-          <select
-            id="month-picker"
-            value={String(selectedMonth)}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-          >
-            {availableMonths.map((m) => (
-              <option key={m} value={String(m)}>
-                {MONTHS_ID[m]} {year}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* ─── KPI cards ─── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile

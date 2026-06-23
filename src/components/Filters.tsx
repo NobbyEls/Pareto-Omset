@@ -5,6 +5,8 @@ import {
   type Department,
   type KotaCode,
 } from "../lib/csvParser";
+import { MONTHS_ID } from "../lib/format";
+import type { TabKey } from "./Tabs";
 
 export type DeptFilter = Department | "all";
 export type KotaFilter = KotaCode | "all";
@@ -23,6 +25,14 @@ interface FiltersProps {
 
   selectedDept: DeptFilter;
   onDeptChange: (d: DeptFilter) => void;
+
+  activeTab: TabKey;
+
+  /** Month filter (0-indexed). Only used when activeTab === "monthly". */
+  selectedMonth: number;
+  onMonthChange: (m: number) => void;
+  /** Available month indices for the current year/filter selection. */
+  availableMonths: number[];
 
   onReset: () => void;
 }
@@ -50,6 +60,10 @@ export function Filters({
   onKotaChange,
   selectedDept,
   onDeptChange,
+  activeTab,
+  selectedMonth,
+  onMonthChange,
+  availableMonths,
   onReset,
 }: FiltersProps) {
   return (
@@ -75,6 +89,21 @@ export function Filters({
             ))}
           </select>
         </Field>
+
+        {activeTab === "monthly" && availableMonths.length > 0 && (
+          <Field label="Bulan">
+            <select
+              value={String(selectedMonth)}
+              onChange={(e) => onMonthChange(Number(e.target.value))}
+            >
+              {availableMonths.map((m) => (
+                <option key={m} value={String(m)}>
+                  {MONTHS_ID[m]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
 
         <Field label="Kota">
           <select
