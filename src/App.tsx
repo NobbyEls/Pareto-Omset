@@ -240,11 +240,11 @@ export default function App() {
 
                   {jasaState.data && (
                     <SectionCard
-                      title={`Matriks Bulanan Jasa ${matrixYear} \u2022 Semua Kota`}
+                      title={`Matriks Bulanan Jasa 2026 • ${selectedKota === "all" ? "Semua Kota" : KOTA_NAMES[selectedKota]}`}
                       description="Breakdown Jasa Sales, Jasa Service, Jasa Part per bulan dengan MoM."
-                      tag={{ label: "Jasa \u00b7 Pivot", tone: "amber" }}
+                      tag={{ label: "Jasa · Pivot", tone: "amber" }}
                     >
-                      <JasaMatrix jasaState={jasaState} year={matrixYear} />
+                      <JasaMatrix jasaState={jasaState} selectedKota={selectedKota} />
                     </SectionCard>
                   )}
 
