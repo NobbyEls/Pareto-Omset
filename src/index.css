@@ -49,6 +49,9 @@
   --trend-up: #34d399;       /* emerald-400 */
   --trend-down: #fb7185;     /* rose-400 */
 
+  /* Table header text color — dark mode uses dim; light mode overrides to dark */
+  --th-color: #94a3b8;       /* slate-400 */
+
   /* Big-number text colors for the Jasa breakdown KPI cards.
      Same hue family as JASA_PART/SERVICE/SALES_COLOR but tuned for
      legibility per theme. */
@@ -102,6 +105,9 @@ html:not(.dark) {
   --tint-year-header: #4338ca; /* indigo-700 */
   --trend-up: #047857;        /* emerald-700 */
   --trend-down: #be123c;      /* rose-700 */
+
+  /* Table header text — dark/readable in light mode */
+  --th-color: #1e293b;        /* slate-800 */
 
   --jasa-part-text: #b45309;     /* amber-700 — light mode */
   --jasa-service-text: #4338ca;  /* indigo-700 — light mode */

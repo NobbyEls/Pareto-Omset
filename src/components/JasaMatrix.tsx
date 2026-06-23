@@ -125,7 +125,7 @@ export function JasaMatrix({ jasaState, year }: Props) {
   });
 
   const subHeaderClass =
-    "px-3 py-1.5 text-right text-[11px] font-bold uppercase tracking-wider";
+    "px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wider";
 
   return (
     <div className="overflow-x-auto rounded-xl">
@@ -208,6 +208,8 @@ export function JasaMatrix({ jasaState, year }: Props) {
           {MONTHS_ID.map((m, idx) => {
             const cur = monthMap.get(idx) ?? null;
             const prev = idx > 0 ? (monthMap.get(idx - 1) ?? null) : null;
+            // If the current month has no data (total === 0), show dash for MoM
+            const curHasData = cur != null && cur.total > 0;
 
             return (
               <tr
@@ -228,7 +230,8 @@ export function JasaMatrix({ jasaState, year }: Props) {
                 {COLS.flatMap((c) => {
                   const curVal = cur ? cur[c.key] : 0;
                   const prevVal = prev ? prev[c.key] : null;
-                  const mom = idx === 0 ? null : pctChange(curVal, prevVal);
+                  // Only calculate MoM if current month has actual data
+                  const mom = !curHasData || idx === 0 ? null : pctChange(curVal, prevVal);
 
                   return [
                     <td

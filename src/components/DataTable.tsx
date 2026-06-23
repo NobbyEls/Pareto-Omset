@@ -6,7 +6,7 @@ import {
   totalFor,
   DEPARTMENTS,
 } from "../lib/csvParser";
-import { formatIDR, MONTHS_ID, classNames } from "../lib/format";
+import { formatIDR, MONTHS_ID } from "../lib/format";
 
 interface Props {
   data: ParsedDataset;
@@ -114,30 +114,20 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
   const Th = ({
     k,
     label,
-    align = "right",
   }: {
     k: SortKey;
     label: string;
-    align?: "left" | "right";
   }) => (
     <th
       onClick={() => onSort(k)}
-      className={classNames(
-        "cursor-pointer select-none px-3 py-2 text-xs font-semibold uppercase tracking-wider transition",
-        align === "right" ? "text-right" : "text-left"
-      )}
-      style={{ color: "var(--text-dim)" }}
+      className="cursor-pointer select-none px-3 py-2 text-center text-xs font-semibold uppercase tracking-wider transition"
+      style={{ color: "var(--th-color)" }}
     >
-      <span
-        className={classNames(
-          "inline-flex items-center gap-1",
-          align === "right" && "flex-row-reverse"
-        )}
-      >
+      <span className="inline-flex items-center justify-center gap-1">
         {label}
         <ArrowUpDown
-          className={classNames("h-3 w-3 transition")}
-          style={{ color: sortKey === k ? "var(--tint-nb)" : "var(--text-dim)" }}
+          className="h-3 w-3 transition"
+          style={{ color: sortKey === k ? "var(--tint-nb)" : "var(--th-color)" }}
         />
       </span>
     </th>
@@ -181,8 +171,8 @@ export function DataTable({ data, selectedYears, selectedDepartments }: Props) {
             }}
           >
             <tr>
-              <Th k="year" label="Tahun" align="left" />
-              <Th k="monthIdx" label="Bulan" align="left" />
+              <Th k="year" label="Tahun" />
+              <Th k="monthIdx" label="Bulan" />
               {visibleDepts.includes("NB") && <Th k="NB" label="NB" />}
               {visibleDepts.includes("PC") && <Th k="PC" label="PC" />}
               {visibleDepts.includes("JASA") && <Th k="JASA" label="JASA" />}

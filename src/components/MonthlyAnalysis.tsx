@@ -25,7 +25,6 @@ import {
   type ParsedDataset,
 } from "../lib/csvParser";
 import {
-  classNames,
   formatIDR,
   formatIDRCompact,
   formatPercent,
@@ -441,34 +440,24 @@ export function MonthlyAnalysis({
   const Th = ({
     k,
     label,
-    align = "right",
   }: {
     k: SortKey;
     label: string;
-    align?: "left" | "right";
   }) => (
     <th
       onClick={() => onSort(k)}
-      className={classNames(
-        "cursor-pointer select-none px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition",
-        align === "right" ? "text-right" : "text-left"
-      )}
+      className="cursor-pointer select-none px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wider transition"
       style={{
-        color: sortKey === k ? "var(--tint-year-header)" : "var(--text-dim)",
+        color: sortKey === k ? "var(--tint-year-header)" : "var(--th-color)",
         background: "rgba(99, 102, 241, 0.08)",
         borderBottom: "1px solid var(--border-subtle)",
       }}
     >
-      <span
-        className={classNames(
-          "inline-flex items-center gap-1",
-          align === "right" && "flex-row-reverse"
-        )}
-      >
+      <span className="inline-flex items-center justify-center gap-1">
         {label}
         <ArrowUpDown
           className="h-3 w-3 transition"
-          style={{ color: sortKey === k ? "var(--tint-nb)" : "var(--text-dim)" }}
+          style={{ color: sortKey === k ? "var(--tint-nb)" : "var(--th-color)" }}
         />
       </span>
     </th>
@@ -547,7 +536,7 @@ export function MonthlyAnalysis({
           >
             <thead>
               <tr>
-                <Th k="name" label="Kota" align="left" />
+                <Th k="name" label="Kota" />
                 {showNB && <Th k="NB" label="NB" />}
                 {showPC && <Th k="PC" label="PC" />}
                 {showJASA && <Th k="JASA" label="JASA" />}
