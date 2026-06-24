@@ -243,7 +243,7 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
                 tick={{ fontSize: 11 }}
                 className="text-slate-600 dark:text-slate-300"
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255, 255, 255, 0.06)" }} />
               <Bar dataKey="totalOmset" radius={[0, 6, 6, 0]} maxBarSize={24}>
                 {chartData.map((_, idx) => (
                   <Cell
