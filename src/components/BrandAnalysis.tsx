@@ -16,7 +16,7 @@ import {
   ErrorState,
   LoadingState,
 } from "./EmptyState";
-import { useBrandDataset } from "../lib/brandDataset";
+import type { BrandDatasetState } from "../lib/brandDataset";
 import { MONTHS_ID, formatIDRCompact, formatIDR, formatNumber } from "../lib/format";
 import type { BrandRecord } from "../lib/brandParser";
 
@@ -61,8 +61,8 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export function BrandAnalysis() {
-  const { data, loading, error } = useBrandDataset();
+export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState }) {
+  const { data, loading, error } = brandState;
 
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [startMonth, setStartMonth] = useState(0);
