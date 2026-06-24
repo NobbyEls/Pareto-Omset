@@ -215,8 +215,7 @@ export function BrandAnalysis({
                 type="category"
                 dataKey="brand"
                 width={120}
-                tick={{ fontSize: 11 }}
-                className="text-slate-600 dark:text-slate-300"
+                tick={{ fontSize: 11, fontWeight: 600, fill: "var(--text-primary)" }}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255, 255, 255, 0.06)" }} />
               <Bar dataKey="totalOmset" radius={[0, 6, 6, 0]} maxBarSize={24}>
