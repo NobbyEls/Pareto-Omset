@@ -157,6 +157,51 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
     return t;
   }, [data, prevYear, hasPrevYear]);
 
+  /** Last month index that has actual data in the current year. */
+  const lastActiveMonth = useMemo(() => {
+    let last = -1;
+    for (let i = 0; i < 12; i++) {
+      const raw = totalFor(data.pivot, year, i);
+      if (raw != null && raw !== 0) last = i;
+    }
+    return last;
+  }, [data, year]);
+
+  /** YTD totals for prev year (only Jan..lastActiveMonth) per department. */
+  const prevTotalsYTD = useMemo(() => {
+    const t: Record<ColKey, number> = { NB: 0, PC: 0, JASA: 0, TOTAL: 0 };
+    if (!hasPrevYear || lastActiveMonth < 0) return t;
+    for (const d of DEPARTMENTS) {
+      let sum = 0;
+      for (let i = 0; i <= lastActiveMonth; i++) {
+        const v = data.pivot[prevYear]?.[i]?.[d];
+        if (typeof v === "number") sum += v;
+      }
+      t[d] = sum;
+    }
+    t.TOTAL = t.NB + t.PC + t.JASA;
+    return t;
+  }, [data, prevYear, hasPrevYear, lastActiveMonth]);
+
+  /** YTD totals for current year (only Jan..lastActiveMonth, with estimation). */
+  const curTotalsYTD = useMemo(() => {
+    const t: Record<ColKey, number> = { NB: 0, PC: 0, JASA: 0, TOTAL: 0 };
+    if (lastActiveMonth < 0) return t;
+    for (const d of DEPARTMENTS) {
+      let sum = 0;
+      for (let i = 0; i <= lastActiveMonth; i++) {
+        const v = data.pivot[year]?.[i]?.[d];
+        if (typeof v === "number") {
+          const est = estimateValue(v, year, i);
+          sum += est.value;
+        }
+      }
+      t[d] = sum;
+    }
+    t.TOTAL = t.NB + t.PC + t.JASA;
+    return t;
+  }, [data, year, lastActiveMonth, estimationKey]);
+
   // Check if any month in the current year has estimation applied
   const hasEstimation = useMemo(() => {
     for (let i = 0; i < 12; i++) {
@@ -421,20 +466,12 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                       if (g == null) return <span style={{ color: "var(--text-dim)" }}>&mdash;</span>;
                       const positive = g.value >= 0;
                       return (
-                        <div className="flex flex-col items-center gap-1">
-                          <span
-                            className="font-mono text-base font-bold"
-                            style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
-                          >
-                            {positive ? "\u25B2" : "\u25BC"} {formatPctID(g.value)}
-                          </span>
-                          <span
-                            className="whitespace-pre-line text-[9px] leading-tight"
-                            style={{ color: "var(--text-dim)" }}
-                          >
-                            {g.label}
-                          </span>
-                        </div>
+                        <span
+                          className="font-mono text-sm font-bold"
+                          style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
+                        >
+                          {formatPctID(g.value)}
+                        </span>
                       );
                     })()}
                   </td>
@@ -465,8 +502,9 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
             </td>
             {COLS.flatMap((c) => {
               const cur = totals[c.key];
-              const prev = prevTotals[c.key];
-              const yoy = hasPrevYear ? pctChange(cur, prev) : null;
+              const growthYTD = hasPrevYear && prevTotalsYTD[c.key] > 0
+                ? pctChange(curTotalsYTD[c.key], prevTotalsYTD[c.key])
+                : null;
               const totalBg =
                 "linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(236, 72, 153, 0.18))";
               return [
@@ -497,7 +535,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                   className="px-1.5 py-2 text-right"
                   style={{ ...cellBorderStyle, background: totalBg }}
                 >
-                  <PctCell value={yoy} />
+                  <PctCell value={growthYTD} />
                 </td>,
               ];
             })}
