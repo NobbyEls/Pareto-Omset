@@ -2,6 +2,9 @@ import { Calendar, Layers, Filter } from "lucide-react";
 import { MONTHS_ID } from "../lib/format";
 import { classNames } from "../lib/format";
 
+const selectClass =
+  "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-white/15 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-white/25 [&>option]:bg-white [&>option]:text-slate-800 dark:[&>option]:bg-slate-800 dark:[&>option]:text-slate-200";
+
 interface BrandFiltersProps {
   years: number[];
   selectedYear: number;
@@ -67,7 +70,7 @@ export function BrandFilters({
           <select
             value={startMonth}
             onChange={(e) => onStartMonthChange(Number(e.target.value))}
-            className="input !w-auto !py-1.5 !px-2.5 text-sm"
+            className={selectClass}
           >
             {MONTHS_ID.map((m, idx) => (
               <option key={idx} value={idx}>
@@ -79,7 +82,7 @@ export function BrandFilters({
           <select
             value={endMonth}
             onChange={(e) => onEndMonthChange(Number(e.target.value))}
-            className="input !w-auto !py-1.5 !px-2.5 text-sm"
+            className={selectClass}
           >
             {MONTHS_ID.map((m, idx) => (
               <option key={idx} value={idx} disabled={idx < startMonth}>
@@ -101,7 +104,7 @@ export function BrandFilters({
         <select
           value={selectedDepartment}
           onChange={(e) => onDepartmentChange(e.target.value)}
-          className="input !w-auto !py-1.5 !px-2.5 text-sm"
+          className={selectClass}
         >
           <option value="__all__">Semua Departemen</option>
           {departments.map((d) => (
