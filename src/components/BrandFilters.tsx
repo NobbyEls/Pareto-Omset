@@ -3,7 +3,7 @@ import { MONTHS_ID } from "../lib/format";
 import { classNames } from "../lib/format";
 
 const selectClass =
-  "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-white/15 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-white/25 [&>option]:bg-white [&>option]:text-slate-800 dark:[&>option]:bg-slate-800 dark:[&>option]:text-slate-200";
+  "rounded-lg border border-white/15 bg-slate-700 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:border-white/25 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 [&>option]:bg-slate-700 [&>option]:text-slate-100";
 
 interface BrandFiltersProps {
   years: number[];
@@ -33,23 +33,29 @@ export function BrandFilters({
   onDepartmentChange,
 }: BrandFiltersProps) {
   return (
-    <div className="glass-card flex flex-wrap items-center gap-x-6 gap-y-4 p-4 md:p-5">
+    <div
+      className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl px-5 py-3"
+      style={{
+        background: "rgba(15, 23, 42, 0.85)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
       {/* Year filter */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          <Calendar className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-400">
+          <Calendar className="h-3.5 w-3.5" />
           Tahun
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {years.map((y) => (
             <button
               key={y}
               onClick={() => onYearChange(y)}
               className={classNames(
-                "rounded-xl border px-3 py-1.5 text-sm font-semibold transition",
+                "rounded-lg border px-3 py-1.5 text-sm font-semibold transition",
                 selectedYear === y
-                  ? "border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300 ring-2 ring-brand-500/40"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                  ? "border-indigo-400/60 bg-indigo-500/20 text-white ring-1 ring-indigo-400/40"
+                  : "border-white/15 bg-slate-700 text-slate-200 hover:border-white/25"
               )}
             >
               {y}
@@ -58,12 +64,12 @@ export function BrandFilters({
         </div>
       </div>
 
-      <div className="hidden h-8 w-px bg-slate-200 dark:bg-white/10 md:block" />
+      <div className="hidden h-6 w-px bg-white/10 md:block" />
 
       {/* Period filter */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          <Filter className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-400">
+          <Filter className="h-3.5 w-3.5" />
           Periode
         </div>
         <div className="flex items-center gap-2">
@@ -78,7 +84,7 @@ export function BrandFilters({
               </option>
             ))}
           </select>
-          <span className="text-xs text-slate-400">s/d</span>
+          <span className="text-xs text-slate-500">s/d</span>
           <select
             value={endMonth}
             onChange={(e) => onEndMonthChange(Number(e.target.value))}
@@ -93,12 +99,12 @@ export function BrandFilters({
         </div>
       </div>
 
-      <div className="hidden h-8 w-px bg-slate-200 dark:bg-white/10 md:block" />
+      <div className="hidden h-6 w-px bg-white/10 md:block" />
 
       {/* Department filter */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          <Layers className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-400">
+          <Layers className="h-3.5 w-3.5" />
           Departemen
         </div>
         <select

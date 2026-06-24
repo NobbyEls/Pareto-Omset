@@ -178,7 +178,7 @@ export default function App() {
 
       <div className="relative z-10">
         <Header loading={loading} refreshing={refreshing} fetchedAt={fetchedAt} fromCache={fromCache} isStale={isStale} onUpdateData={updateData}>
-          {ready && data && (
+          {ready && data && activeTab !== "brand" && (
             <Filters
               years={data.years}
               kotas={data.kotas}
