@@ -23,6 +23,7 @@ import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
 import { BrandAnalysis } from "./components/BrandAnalysis";
 import { useDataset } from "./lib/dataset";
 import { useJasaDataset } from "./lib/jasaDataset";
+import { useBrandDataset } from "./lib/brandDataset";
 import {
   DEPARTMENTS,
   KOTA_NAMES,
@@ -37,6 +38,9 @@ export default function App() {
   // Lift Jasa dataset to App level so setDataDate() is called as early as
   // possible -- before estimation-dependent components first render.
   const jasaState = useJasaDataset();
+  // Lift Brand dataset to App level so data is fetched immediately on app load,
+  // not lazily when user switches to the brand tab.
+  const brandState = useBrandDataset();
 
   // When jasaState.data transitions from null to non-null, parseJasaCSV has
   // run and setDataDate() was called. Components that use estimateValue() need
@@ -343,7 +347,7 @@ export default function App() {
                   selectedMonth={selectedMonth}
                 />
               ) : (
-                <BrandAnalysis />
+                <BrandAnalysis brandState={brandState} />
               )}
 
               <footer
