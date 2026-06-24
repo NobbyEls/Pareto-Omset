@@ -94,7 +94,7 @@ function PctCell({ value }: { value: number | null }) {
   const positive = value >= 0;
   return (
     <span
-      className={`font-mono text-[10px] font-medium tabular-nums ${positive ? "matrix-pct-pos" : "matrix-pct-neg"}`}
+      className={`font-mono text-[10px] font-semibold tabular-nums ${positive ? "matrix-pct-pos" : "matrix-pct-neg"}`}
       style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
     >
       {formatPctID(value)}
@@ -370,7 +370,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                         <span style={{ color: "var(--text-dim)" }}>0</span>
                       ) : (
                         <span
-                          className="font-mono"
+                          className="font-mono font-semibold"
                           style={{ color: "var(--text-primary)", ...estStyle }}
                         >
                           {formatNumber(cur.value)}
@@ -479,7 +479,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                     color: "var(--text-primary)",
                   }}
                 >
-                  <span className="font-mono">{formatNumber(cur)}</span>
+                  <span className="font-mono font-semibold">{formatNumber(cur)}</span>
                 </td>,
                 <td
                   key={`total-${c.key}-mom`}
