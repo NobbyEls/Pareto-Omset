@@ -48,13 +48,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("yearly");
   const [selectedMonth, setSelectedMonth] = useState<number>(-1);
 
-  // When switching to monthly tab, if "Semua Tahun" is selected, snap to latest year
-  useEffect(() => {
-    if (activeTab === "monthly" && primaryYear === "all" && data && data.years.length > 0) {
-      setPrimaryYear(data.years[data.years.length - 1]);
-    }
-  }, [activeTab, primaryYear, data]);
-
   useEffect(() => {
     if (!data) return;
     if (data.years.length === 0) {
@@ -198,7 +191,22 @@ export default function App() {
             />
           )}
           {ready && data && (
-            <Tabs active={activeTab} onChange={setActiveTab} />
+            <Tabs active={activeTab} onChange={(tab) => {
+              setActiveTab(tab);
+              // Reset all filters to tab-specific defaults
+              setSelectedKota("all");
+              setSelectedDept("all");
+              if (tab === "yearly") {
+                setPrimaryYear("all");
+              } else {
+                // Bulanan: default to latest year
+                if (data && data.years.length > 0) {
+                  setPrimaryYear(data.years[data.years.length - 1]);
+                }
+                // selectedMonth will auto-snap to latest via existing effect
+                setSelectedMonth(-1);
+              }
+            }} />
           )}
         </Header>
 
