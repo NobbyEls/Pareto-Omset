@@ -94,7 +94,7 @@ function PctCell({ value }: { value: number | null }) {
   const positive = value >= 0;
   return (
     <span
-      className={`font-mono text-[12px] font-medium tabular-nums ${positive ? "matrix-pct-pos" : "matrix-pct-neg"}`}
+      className={`font-mono text-[11px] font-medium tabular-nums ${positive ? "matrix-pct-pos" : "matrix-pct-neg"}`}
       style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
     >
       {formatPctID(value)}
@@ -175,7 +175,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
   });
 
   const subHeaderClass = (col: ColumnDef) =>
-    `px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wider ${col.headerClass}`;
+    `px-1.5 py-1 text-center text-[10px] font-bold uppercase tracking-wider ${col.headerClass}`;
 
   /**
    * YTD Growth: (sum Jan..monthIdx current year) vs (sum Jan..monthIdx prev year).
@@ -204,9 +204,9 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
   const growthAccent = "#22c55e";
 
   return (
-    <div className="overflow-x-auto rounded-xl">
+    <div className="rounded-xl">
       <table
-        className="w-full min-w-[1100px] border-separate text-sm"
+        className="w-full border-separate text-xs"
         style={{
           borderSpacing: 0,
           borderRight: "1px solid var(--border-subtle)",
@@ -219,7 +219,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
           <tr>
             <th
               colSpan={TOTAL_COLSPAN}
-              className="font-display px-3 py-3 text-center text-base font-bold tracking-tight"
+              className="font-display px-2 py-2 text-center text-sm font-bold tracking-tight"
               style={{
                 ...cellBorderStyle,
                 background:
@@ -235,7 +235,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
           <tr>
             <th
               rowSpan={2}
-              className="font-display sticky left-0 z-10 px-3 py-2 text-center text-xs font-bold uppercase tracking-wider"
+              className="font-display sticky left-0 z-10 px-1.5 py-1.5 text-center text-xs font-bold uppercase tracking-wider"
               style={{
                 ...cellBorderStyle,
                 background: "rgba(99, 102, 241, 0.18)",
@@ -248,7 +248,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
               <th
                 key={c.key}
                 colSpan={3}
-                className={`font-display px-3 py-2 text-center text-xs font-bold uppercase tracking-wider ${c.headerClass}`}
+                className={`font-display px-1.5 py-1.5 text-center text-xs font-bold uppercase tracking-wider ${c.headerClass}`}
                 style={{
                   ...cellBorderStyle,
                   background: c.headerBg,
@@ -260,7 +260,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
             ))}
             <th
               rowSpan={2}
-              className="font-display px-3 py-2 text-center text-xs font-bold uppercase tracking-wider"
+              className="font-display px-1.5 py-1.5 text-center text-xs font-bold uppercase tracking-wider"
               style={{
                 ...cellBorderStyle,
                 background: growthHeaderBg,
@@ -309,7 +309,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 style={{ background: "transparent" }}
               >
                 <td
-                  className="sticky left-0 z-10 px-3 py-2 text-center font-medium"
+                  className="sticky left-0 z-10 px-1.5 py-1.5 text-center font-medium"
                   style={{
                     ...cellBorderStyle,
                     background: "rgba(99, 102, 241, 0.06)",
@@ -341,7 +341,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                   return [
                     <td
                       key={`${m}-${c.key}-omset`}
-                      className={`px-3 py-2 text-right tabular-nums ${c.cellClass}`}
+                      className={`px-1.5 py-1.5 text-right tabular-nums ${c.cellClass}`}
                       style={{
                         ...cellBorderStyle,
                         background: c.cellBg,
@@ -371,7 +371,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                     </td>,
                     <td
                       key={`${m}-${c.key}-mom`}
-                      className={`px-3 py-2 text-right ${c.cellClass}`}
+                      className={`px-1.5 py-1.5 text-right ${c.cellClass}`}
                       style={{ ...cellBorderStyle, background: c.cellBg }}
                     >
                       <span style={estStyle}>
@@ -380,7 +380,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                     </td>,
                     <td
                       key={`${m}-${c.key}-yoy`}
-                      className={`px-3 py-2 text-right ${c.cellClass}`}
+                      className={`px-1.5 py-1.5 text-right ${c.cellClass}`}
                       style={{ ...cellBorderStyle, background: c.cellBg }}
                     >
                       <span style={estStyle}>
@@ -391,7 +391,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 })}
                 {/* Growth column — single merged column */}
                 <td
-                  className="px-3 py-2 text-center"
+                  className="px-1.5 py-1.5 text-center"
                   style={{ ...cellBorderStyle, background: growthCellBg }}
                 >
                   <PctCell value={growth} />
@@ -402,7 +402,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
 
           <tr className={classNames("font-bold")}>
             <td
-              className="sticky left-0 z-10 px-3 py-2.5 text-center"
+              className="sticky left-0 z-10 px-1.5 py-1.5.5 text-center"
               style={{
                 ...cellBorderStyle,
                 background:
@@ -429,7 +429,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
               return [
                 <td
                   key={`total-${c.key}-omset`}
-                  className="px-3 py-2.5 text-right tabular-nums"
+                  className="px-1.5 py-1.5.5 text-right tabular-nums"
                   style={{
                     ...cellBorderStyle,
                     background: totalBg,
@@ -440,7 +440,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 </td>,
                 <td
                   key={`total-${c.key}-mom`}
-                  className="px-3 py-2.5 text-right"
+                  className="px-1.5 py-1.5.5 text-right"
                   style={{
                     ...cellBorderStyle,
                     background: totalBg,
@@ -451,7 +451,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 </td>,
                 <td
                   key={`total-${c.key}-yoy`}
-                  className="px-3 py-2.5 text-right"
+                  className="px-1.5 py-1.5.5 text-right"
                   style={{ ...cellBorderStyle, background: totalBg }}
                 >
                   <PctCell value={yoy} />
@@ -460,7 +460,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
             })}
             {/* Growth footer — full-year YTD growth (same as last active month) */}
             <td
-              className="px-3 py-2.5 text-center"
+              className="px-1.5 py-1.5.5 text-center"
               style={{
                 ...cellBorderStyle,
                 background: "linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.18))",
