@@ -466,12 +466,20 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                       if (g == null) return <span style={{ color: "var(--text-dim)" }}>&mdash;</span>;
                       const positive = g.value >= 0;
                       return (
-                        <span
-                          className="font-mono text-sm font-bold"
-                          style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
-                        >
-                          {formatPctID(g.value)}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className="font-mono text-base font-bold"
+                            style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
+                          >
+                            {positive ? "\u25B2" : "\u25BC"} {formatPctID(g.value)}
+                          </span>
+                          <span
+                            className="whitespace-pre-line text-[9px] leading-tight"
+                            style={{ color: "var(--text-dim)" }}
+                          >
+                            {g.label}
+                          </span>
+                        </div>
                       );
                     })()}
                   </td>
