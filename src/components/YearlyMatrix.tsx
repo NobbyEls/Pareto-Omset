@@ -4,8 +4,6 @@ import {
   type ParsedDataset,
   DEPARTMENTS,
   totalFor,
-  deptTotalForYear,
-  totalForYear,
 } from "../lib/csvParser";
 import { formatNumber, MONTHS_ID, classNames } from "../lib/format";
 import { isCurrentMonth, estimateValue } from "../lib/estimation";
@@ -148,14 +146,6 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
     t.TOTAL = t.NB + t.PC + t.JASA;
     return t;
   }, [data, year, estimationKey]);
-
-  const prevTotals = useMemo(() => {
-    const t: Record<ColKey, number> = { NB: 0, PC: 0, JASA: 0, TOTAL: 0 };
-    if (!hasPrevYear) return t;
-    for (const d of DEPARTMENTS) t[d] = deptTotalForYear(data.pivot, prevYear, d);
-    t.TOTAL = totalForYear(data.pivot, prevYear);
-    return t;
-  }, [data, prevYear, hasPrevYear]);
 
   /** Last month index that has actual data in the current year. */
   const lastActiveMonth = useMemo(() => {
