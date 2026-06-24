@@ -213,6 +213,20 @@ export default function App() {
               onReset={handleReset}
             />
           )}
+          {activeTab === "brand" && brandState.data && (
+            <BrandFilters
+              years={brandState.data.years}
+              selectedYear={brandYear}
+              onYearChange={setBrandYear}
+              startMonth={brandStartMonth}
+              endMonth={brandEndMonth}
+              onStartMonthChange={setBrandStartMonth}
+              onEndMonthChange={setBrandEndMonth}
+              departments={brandState.data.departments}
+              selectedDepartments={brandDepartments}
+              onDepartmentsChange={setBrandDepartments}
+            />
+          )}
           {ready && data && (
             <Tabs active={activeTab} onChange={(tab) => {
               setActiveTab(tab);
