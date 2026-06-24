@@ -141,14 +141,11 @@ export function BrandFilters({
 }: BrandFiltersProps) {
   return (
     <div
-      className="sticky z-20 -mt-6 mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 md:-mt-8"
+      className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3"
       style={{
-        top: "0px",
         background: "var(--bg-glass)",
         border: "1px solid var(--border-subtle)",
         borderRadius: "12px",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
       }}
     >
       {/* Year filter — dropdown */}

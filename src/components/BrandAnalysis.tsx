@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { BrandFilters } from "./BrandFilters";
 import { SectionCard } from "./SectionCard";
 import {
   EmptyState,
@@ -67,33 +66,22 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState }) {
+export function BrandAnalysis({
+  brandState,
+  selectedYear,
+  startMonth,
+  endMonth,
+  selectedDepartments,
+}: {
+  brandState: BrandDatasetState;
+  selectedYear: number;
+  startMonth: number;
+  endMonth: number;
+  selectedDepartments: string[];
+}) {
   const { data, loading, error } = brandState;
 
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [startMonth, setStartMonth] = useState(0);
-  const [endMonth, setEndMonth] = useState(11);
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-
-  // Initialize year from data
-  useEffect(() => {
-    if (!data || data.years.length === 0) return;
-    setSelectedYear((prev) => {
-      if (data.years.includes(prev)) return prev;
-      return data.years[data.years.length - 1];
-    });
-    // Default: all departments selected
-    if (selectedDepartments.length === 0) {
-      setSelectedDepartments(data.departments);
-    }
-  }, [data]);
-
-  // Adjust endMonth when startMonth changes
-  useEffect(() => {
-    if (endMonth < startMonth) {
-      setEndMonth(startMonth);
-    }
-  }, [startMonth, endMonth]);
+  // Adjust endMonth when startMonth changes — handled by parent now
 
   // Compute aggregated brand data
   const aggregated = useMemo<AggregatedBrand[]>(() => {
@@ -162,19 +150,6 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
 
   return (
     <div className="space-y-5">
-      <BrandFilters
-        years={data.years}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
-        startMonth={startMonth}
-        endMonth={endMonth}
-        onStartMonthChange={setStartMonth}
-        onEndMonthChange={setEndMonth}
-        departments={data.departments}
-        selectedDepartments={selectedDepartments}
-        onDepartmentsChange={setSelectedDepartments}
-      />
-
       {/* KPI summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="kpi-card">
@@ -279,7 +254,10 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
               {aggregated.map((item, idx) => (
                 <tr
                   key={item.brand}
-                  className="border-b border-slate-100 transition hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/[0.02]"
+                  className="border-b transition"
+                  style={{ borderColor: "var(--border-subtle)" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-glass)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                 >
                   <td className="px-3 py-2 font-medium text-slate-500 dark:text-slate-400">
                     {idx + 1}

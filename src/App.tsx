@@ -21,6 +21,7 @@ import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
 import { RevenueYoYBarChart } from "./components/charts/RevenueYoYBarChart";
 import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
 import { BrandAnalysis } from "./components/BrandAnalysis";
+import { BrandFilters } from "./components/BrandFilters";
 import { useDataset } from "./lib/dataset";
 import { useJasaDataset } from "./lib/jasaDataset";
 import { useBrandDataset } from "./lib/brandDataset";
@@ -53,6 +54,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("yearly");
   const [selectedMonth, setSelectedMonth] = useState<number>(-1);
 
+  // Brand tab filter state (lifted here so BrandFilters can render in Header)
+  const [brandYear, setBrandYear] = useState<number>(2026);
+  const [brandStartMonth, setBrandStartMonth] = useState(0);
+  const [brandEndMonth, setBrandEndMonth] = useState(11);
+  const [brandDepartments, setBrandDepartments] = useState<string[]>([]);
+
   useEffect(() => {
     if (!data) return;
     if (data.years.length === 0) {
@@ -66,6 +73,17 @@ export default function App() {
       return "all";
     });
   }, [data]);
+
+  // Initialize brand filter defaults from brand dataset
+  useEffect(() => {
+    if (!brandState.data) return;
+    if (brandState.data.years.length > 0) {
+      setBrandYear((prev) => brandState.data!.years.includes(prev) ? prev : brandState.data!.years[brandState.data!.years.length - 1]);
+    }
+    if (brandDepartments.length === 0) {
+      setBrandDepartments(brandState.data.departments);
+    }
+  }, [brandState.data]);
 
   const hasData = !!data && data.records.length > 0;
   const ready = hasData && primaryYear != null;
@@ -214,6 +232,20 @@ export default function App() {
               // brand tab: no additional filter reset needed
             }} />
           )}
+          {activeTab === "brand" && brandState.data && (
+            <BrandFilters
+              years={brandState.data.years}
+              selectedYear={brandYear}
+              onYearChange={setBrandYear}
+              startMonth={brandStartMonth}
+              endMonth={brandEndMonth}
+              onStartMonthChange={setBrandStartMonth}
+              onEndMonthChange={setBrandEndMonth}
+              departments={brandState.data.departments}
+              selectedDepartments={brandDepartments}
+              onDepartmentsChange={setBrandDepartments}
+            />
+          )}
         </Header>
 
         <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8">
@@ -347,7 +379,13 @@ export default function App() {
                   selectedMonth={selectedMonth}
                 />
               ) : (
-                <BrandAnalysis brandState={brandState} />
+                <BrandAnalysis
+                  brandState={brandState}
+                  selectedYear={brandYear}
+                  startMonth={brandStartMonth}
+                  endMonth={brandEndMonth}
+                  selectedDepartments={brandDepartments}
+                />
               )}
 
               <footer
