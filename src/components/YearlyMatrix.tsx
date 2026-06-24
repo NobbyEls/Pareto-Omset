@@ -178,26 +178,43 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
     `px-1 py-1 text-center text-[9px] font-bold uppercase tracking-wider ${col.headerClass}`;
 
   /**
-   * YTD Growth: (sum Jan..monthIdx current year) vs (sum Jan..monthIdx prev year).
-   * Includes estimation for current month.
+   * YTD Growth (single value): accumulate from Jan to the last month with data
+   * (including estimation) and compare vs same period prev year.
    */
-  const ytdGrowth = (monthIdx: number): number | null => {
+  const ytdGrowthFinal = useMemo<{ value: number; label: string } | null>(() => {
     if (!hasPrevYear) return null;
     let ytdCur = 0;
-    let ytdPrev = 0;
-    let hasAnyCur = false;
-    for (let i = 0; i <= monthIdx; i++) {
+    let lastActiveMonth = -1;
+    let hasEstInPeriod = false;
+
+    for (let i = 0; i < 12; i++) {
       const cur = cellValue(year, i, "TOTAL");
-      const prev = cellValue(prevYear, i, "TOTAL");
       if (cur.value != null && cur.value !== 0) {
         ytdCur += cur.value;
-        hasAnyCur = true;
+        lastActiveMonth = i;
+        if (cur.isEstimated) hasEstInPeriod = true;
       }
-      if (prev.value != null) ytdPrev += prev.value;
     }
-    if (!hasAnyCur || ytdPrev === 0) return null;
-    return ((ytdCur - ytdPrev) / ytdPrev) * 100;
-  };
+
+    if (lastActiveMonth < 0) return null;
+
+    let prevSum = 0;
+    for (let i = 0; i <= lastActiveMonth; i++) {
+      const prev = cellValue(prevYear, i, "TOTAL");
+      if (prev.value != null) prevSum += prev.value;
+    }
+    if (prevSum === 0) return null;
+
+    const pct = ((ytdCur - prevSum) / prevSum) * 100;
+
+    const startLabel = MONTHS_ID[0].substring(0, 3);
+    const endLabel = MONTHS_ID[lastActiveMonth].substring(0, 3);
+    const estNote = hasEstInPeriod ? `\n(${MONTHS_ID[lastActiveMonth]}: estimasi)` : "";
+    const label = `${startLabel} \u2013 ${endLabel} ${year}${estNote}\nvs ${startLabel} \u2013 ${endLabel} ${prevYear}`;
+
+    return { value: pct, label };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, year, prevYear, hasPrevYear, estimationKey]);
 
   const growthHeaderBg = "rgba(34, 197, 94, 0.18)";
   const growthCellBg = "rgba(34, 197, 94, 0.06)";
@@ -213,7 +230,6 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
           borderBottom: "1px solid var(--border-subtle)",
           borderRadius: 12,
           overflow: "hidden",
-          tableLayout: "fixed",
         }}
       >
         <thead>
@@ -302,7 +318,6 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
         <tbody>
           {MONTHS_ID.map((m, idx) => {
             const isEst = isCurrentMonth(year, idx);
-            const growth = ytdGrowth(idx);
             return (
               <tr
                 key={m}
@@ -390,13 +405,40 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                     </td>,
                   ];
                 })}
-                {/* Growth column — single merged column */}
-                <td
-                  className="px-1.5 py-1.5 text-center"
-                  style={{ ...cellBorderStyle, background: growthCellBg }}
-                >
-                  <PctCell value={growth} />
-                </td>
+                {/* Growth column — single merged cell, only on first row */}
+                {idx === 0 && (
+                  <td
+                    rowSpan={13}
+                    className="px-2 py-2 text-center align-middle"
+                    style={{
+                      ...cellBorderStyle,
+                      background: growthCellBg,
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {(() => {
+                      const g = ytdGrowthFinal;
+                      if (g == null) return <span style={{ color: "var(--text-dim)" }}>&mdash;</span>;
+                      const positive = g.value >= 0;
+                      return (
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className="font-mono text-base font-bold"
+                            style={{ color: positive ? "var(--trend-up)" : "var(--trend-down)" }}
+                          >
+                            {positive ? "\u25B2" : "\u25BC"} {formatPctID(g.value)}
+                          </span>
+                          <span
+                            className="whitespace-pre-line text-[9px] leading-tight"
+                            style={{ color: "var(--text-dim)" }}
+                          >
+                            {g.label}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -459,16 +501,6 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 </td>,
               ];
             })}
-            {/* Growth footer — full-year YTD growth (same as last active month) */}
-            <td
-              className="px-1.5 py-2 text-center"
-              style={{
-                ...cellBorderStyle,
-                background: "linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.18))",
-              }}
-            >
-              <PctCell value={hasPrevYear ? pctChange(totals.TOTAL, prevTotals.TOTAL) : null} />
-            </td>
           </tr>
         </tbody>
       </table>
