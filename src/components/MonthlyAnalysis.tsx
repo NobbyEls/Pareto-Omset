@@ -586,7 +586,7 @@ export function MonthlyAnalysis({
                         className="px-3 py-3 text-right font-mono tabular-nums"
                         style={{ color: "var(--tint-nb)" }}
                       >
-                        {formatIDRCompact(r.NB)}
+                        {formatIDR(r.NB)}
                       </td>
                     )}
                     {showPC && (
@@ -594,7 +594,7 @@ export function MonthlyAnalysis({
                         className="px-3 py-3 text-right font-mono tabular-nums"
                         style={{ color: "var(--tint-pc)" }}
                       >
-                        {formatIDRCompact(r.PC)}
+                        {formatIDR(r.PC)}
                       </td>
                     )}
                     {showJASA && (
@@ -602,7 +602,7 @@ export function MonthlyAnalysis({
                         className="px-3 py-3 text-right font-mono tabular-nums"
                         style={{ color: "var(--tint-jasa)" }}
                       >
-                        {formatIDRCompact(r.JASA)}
+                        {formatIDR(r.JASA)}
                       </td>
                     )}
                     <td
@@ -657,7 +657,7 @@ export function MonthlyAnalysis({
                     className="px-3 py-3 text-right font-mono font-bold tabular-nums"
                     style={{ color: "var(--tint-nb)" }}
                   >
-                    {formatIDRCompact(deptTotals.NB)}
+                    {formatIDR(deptTotals.NB)}
                   </td>
                 )}
                 {showPC && (
@@ -665,7 +665,7 @@ export function MonthlyAnalysis({
                     className="px-3 py-3 text-right font-mono font-bold tabular-nums"
                     style={{ color: "var(--tint-pc)" }}
                   >
-                    {formatIDRCompact(deptTotals.PC)}
+                    {formatIDR(deptTotals.PC)}
                   </td>
                 )}
                 {showJASA && (
@@ -673,7 +673,7 @@ export function MonthlyAnalysis({
                     className="px-3 py-3 text-right font-mono font-bold tabular-nums"
                     style={{ color: "var(--tint-jasa)" }}
                   >
-                    {formatIDRCompact(deptTotals.JASA)}
+                    {formatIDR(deptTotals.JASA)}
                   </td>
                 )}
                 <td
