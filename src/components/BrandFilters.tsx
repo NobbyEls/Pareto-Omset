@@ -2,9 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Calendar, Layers, Filter, ChevronDown, Check } from "lucide-react";
 import { MONTHS_ID } from "../lib/format";
 
-const selectClass =
-  "rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:border-white/25 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 [&>option]:bg-slate-800 [&>option]:text-slate-100";
-
 interface BrandFiltersProps {
   years: number[];
   selectedYear: number;
@@ -60,7 +57,7 @@ function DepartmentChecklist({
   };
 
   const label = noneSelected
-    ? "Pilih Departemen"
+    ? "Semua Departemen"
     : allSelected
       ? "Semua Departemen"
       : selectedDepartments.length === 1
@@ -71,35 +68,53 @@ function DepartmentChecklist({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:border-white/25"
+        className="filter-group-select flex items-center gap-2"
       >
         <span className="max-w-[160px] truncate">{label}</span>
         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full z-50 mt-1 max-h-[300px] w-[220px] overflow-y-auto rounded-xl border border-white/15 bg-slate-800 p-1.5 shadow-xl"
+          className="absolute left-0 top-full z-50 mt-1 max-h-[300px] w-[220px] overflow-y-auto rounded-xl border p-1.5 shadow-xl"
+          style={{
+            background: "var(--bg-card)",
+            borderColor: "var(--border-subtle)",
+          }}
         >
           {/* Select all */}
           <button
             onClick={toggleAll}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition hover:opacity-80"
+            style={{ color: "var(--text-primary)" }}
           >
-            <div className={`flex h-4 w-4 items-center justify-center rounded border ${allSelected ? "border-indigo-400 bg-indigo-500" : "border-white/30"}`}>
-              {allSelected && <Check className="h-3 w-3 text-white" />}
+            <div
+              className="flex h-4 w-4 items-center justify-center rounded border"
+              style={{
+                borderColor: allSelected || noneSelected ? "var(--indigo)" : "var(--border-medium)",
+                background: allSelected || noneSelected ? "var(--indigo)" : "transparent",
+              }}
+            >
+              {(allSelected || noneSelected) && <Check className="h-3 w-3 text-white" />}
             </div>
             Semua Departemen
           </button>
-          <div className="my-1 h-px bg-white/10" />
+          <div className="my-1 h-px" style={{ background: "var(--border-subtle)" }} />
           {departments.map((d) => {
             const checked = selectedDepartments.includes(d);
             return (
               <button
                 key={d}
                 onClick={() => toggleDept(d)}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 transition hover:bg-white/10"
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition hover:opacity-80"
+                style={{ color: "var(--text-muted)" }}
               >
-                <div className={`flex h-4 w-4 items-center justify-center rounded border ${checked ? "border-indigo-400 bg-indigo-500" : "border-white/30"}`}>
+                <div
+                  className="flex h-4 w-4 items-center justify-center rounded border"
+                  style={{
+                    borderColor: checked ? "var(--indigo)" : "var(--border-medium)",
+                    background: checked ? "var(--indigo)" : "transparent",
+                  }}
+                >
                   {checked && <Check className="h-3 w-3 text-white" />}
                 </div>
                 <span className="truncate">{d}</span>
@@ -126,22 +141,24 @@ export function BrandFilters({
 }: BrandFiltersProps) {
   return (
     <div
-      className="sticky top-0 z-30 -mx-4 -mt-6 mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 md:-mx-8 md:-mt-8"
+      className="sticky z-30 -mx-4 -mt-6 mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 md:-mx-8 md:-mt-8"
       style={{
-        background: "var(--grad-primary)",
-        borderBottom: "1px solid rgba(255,255,255,0.10)",
+        top: "57px",
+        background: "var(--bg-glass)",
+        borderBottom: "1px solid var(--border-subtle)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
       }}
     >
       {/* Year filter — dropdown */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/70">
-          <Calendar className="h-3.5 w-3.5" />
+      <div className="filter-group">
+        <label>
+          <Calendar className="inline h-3.5 w-3.5 mr-1" />
           Tahun
-        </div>
+        </label>
         <select
           value={selectedYear}
           onChange={(e) => onYearChange(Number(e.target.value))}
-          className={selectClass}
         >
           {years.map((y) => (
             <option key={y} value={y}>
@@ -151,19 +168,16 @@ export function BrandFilters({
         </select>
       </div>
 
-      <div className="hidden h-6 w-px bg-white/20 md:block" />
-
       {/* Period filter */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/70">
-          <Filter className="h-3.5 w-3.5" />
+      <div className="filter-group">
+        <label>
+          <Filter className="inline h-3.5 w-3.5 mr-1" />
           Periode
-        </div>
+        </label>
         <div className="flex items-center gap-2">
           <select
             value={startMonth}
             onChange={(e) => onStartMonthChange(Number(e.target.value))}
-            className={selectClass}
           >
             {MONTHS_ID.map((m, idx) => (
               <option key={idx} value={idx}>
@@ -171,11 +185,10 @@ export function BrandFilters({
               </option>
             ))}
           </select>
-          <span className="text-xs text-white/50">s/d</span>
+          <span className="text-xs" style={{ color: "var(--text-dim)" }}>s/d</span>
           <select
             value={endMonth}
             onChange={(e) => onEndMonthChange(Number(e.target.value))}
-            className={selectClass}
           >
             {MONTHS_ID.map((m, idx) => (
               <option key={idx} value={idx} disabled={idx < startMonth}>
@@ -186,14 +199,12 @@ export function BrandFilters({
         </div>
       </div>
 
-      <div className="hidden h-6 w-px bg-white/20 md:block" />
-
       {/* Department filter — checklist multi-select */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/70">
-          <Layers className="h-3.5 w-3.5" />
+      <div className="filter-group">
+        <label>
+          <Layers className="inline h-3.5 w-3.5 mr-1" />
           Departemen
-        </div>
+        </label>
         <DepartmentChecklist
           departments={departments}
           selectedDepartments={selectedDepartments}

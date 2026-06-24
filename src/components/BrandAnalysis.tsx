@@ -44,17 +44,23 @@ function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload as AggregatedBrand;
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-800/95">
-      <p className="font-semibold text-slate-800 dark:text-slate-100">
+    <div
+      className="rounded-xl border px-3 py-2 text-xs shadow-lg backdrop-blur"
+      style={{
+        background: "rgba(30, 30, 50, 0.85)",
+        borderColor: "var(--border-subtle)",
+      }}
+    >
+      <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
         {d.brand}
       </p>
-      <p className="mt-1 text-slate-600 dark:text-slate-300">
+      <p className="mt-1" style={{ color: "var(--text-muted)" }}>
         Omset: {formatIDR(d.totalOmset)}
       </p>
-      <p className="text-slate-600 dark:text-slate-300">
+      <p style={{ color: "var(--text-muted)" }}>
         Kontribusi: {d.percentage.toFixed(2)}%
       </p>
-      <p className="text-slate-600 dark:text-slate-300">
+      <p style={{ color: "var(--text-muted)" }}>
         Kumulatif: {d.cumulativePercentage.toFixed(2)}%
       </p>
     </div>
