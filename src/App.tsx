@@ -246,20 +246,6 @@ export default function App() {
               // brand tab: no additional filter reset needed
             }} />
           )}
-          {activeTab === "brand" && brandState.data && (
-            <BrandFilters
-              years={brandState.data.years}
-              selectedYear={brandYear}
-              onYearChange={setBrandYear}
-              startMonth={brandStartMonth}
-              endMonth={brandEndMonth}
-              onStartMonthChange={setBrandStartMonth}
-              onEndMonthChange={setBrandEndMonth}
-              departments={brandState.data.departments}
-              selectedDepartments={brandDepartments}
-              onDepartmentsChange={setBrandDepartments}
-            />
-          )}
         </Header>
 
         <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8">
