@@ -66,8 +66,8 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
 
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [startMonth, setStartMonth] = useState(0);
-  const [endMonth, setEndMonth] = useState(5);
-  const [selectedDepartment, setSelectedDepartment] = useState("__all__");
+  const [endMonth, setEndMonth] = useState(11);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
 
   // Initialize year from data
   useEffect(() => {
@@ -76,6 +76,10 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
       if (data.years.includes(prev)) return prev;
       return data.years[data.years.length - 1];
     });
+    // Default: all departments selected
+    if (selectedDepartments.length === 0) {
+      setSelectedDepartments(data.departments);
+    }
   }, [data]);
 
   // Adjust endMonth when startMonth changes
@@ -92,7 +96,7 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
     const filtered = data.records.filter((r: BrandRecord) => {
       if (r.year !== selectedYear) return false;
       if (r.monthIndex < startMonth || r.monthIndex > endMonth) return false;
-      if (selectedDepartment !== "__all__" && r.department !== selectedDepartment)
+      if (selectedDepartments.length > 0 && !selectedDepartments.includes(r.department))
         return false;
       return true;
     });
@@ -122,7 +126,7 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
         cumulativePercentage: cumulative,
       };
     });
-  }, [data, selectedYear, startMonth, endMonth, selectedDepartment]);
+  }, [data, selectedYear, startMonth, endMonth, selectedDepartments]);
 
   // Summary stats
   const totalOmset = useMemo(
@@ -161,8 +165,8 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
         onStartMonthChange={setStartMonth}
         onEndMonthChange={setEndMonth}
         departments={data.departments}
-        selectedDepartment={selectedDepartment}
-        onDepartmentChange={setSelectedDepartment}
+        selectedDepartments={selectedDepartments}
+        onDepartmentsChange={setSelectedDepartments}
       />
 
       {/* KPI summary */}
@@ -205,7 +209,7 @@ export function BrandAnalysis({ brandState }: { brandState: BrandDatasetState })
       {/* Horizontal bar chart - Top 20 */}
       <SectionCard
         title={`Top 20 Brand - Kontribusi Omset`}
-        description={`Peringkat brand berdasarkan total omset ${periodLabel} ${selectedYear}${selectedDepartment !== "__all__" ? ` (${selectedDepartment})` : ""}`}
+        description={`Peringkat brand berdasarkan total omset ${periodLabel} ${selectedYear}${selectedDepartments.length < (data?.departments.length ?? 0) ? ` (${selectedDepartments.length} dept)` : ""}`}
       >
         <div style={{ width: "100%", height: Math.max(400, chartData.length * 32) }}>
           <ResponsiveContainer>
