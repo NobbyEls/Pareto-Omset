@@ -174,6 +174,28 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
   const subHeaderClass = (col: ColumnDef) =>
     `px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wider ${col.headerClass}`;
 
+  /**
+   * YTD Growth: (sum Jan..monthIdx current year) vs (sum Jan..monthIdx prev year).
+   * Includes estimation for current month.
+   */
+  const ytdGrowth = (monthIdx: number): number | null => {
+    if (!hasPrevYear) return null;
+    let ytdCur = 0;
+    let ytdPrev = 0;
+    let hasAnyCur = false;
+    for (let i = 0; i <= monthIdx; i++) {
+      const cur = cellValue(year, i, "TOTAL");
+      const prev = cellValue(prevYear, i, "TOTAL");
+      if (cur.value != null && cur.value !== 0) {
+        ytdCur += cur.value;
+        hasAnyCur = true;
+      }
+      if (prev.value != null) ytdPrev += prev.value;
+    }
+    if (!hasAnyCur || ytdPrev === 0) return null;
+    return ((ytdCur - ytdPrev) / ytdPrev) * 100;
+  };
+
   return (
     <div className="overflow-x-auto rounded-xl">
       <table
@@ -189,7 +211,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
         <thead>
           <tr>
             <th
-              colSpan={1 + COLS.length * 3}
+              colSpan={1 + COLS.length * 3 + 1}
               className="font-display px-3 py-3 text-center text-base font-bold tracking-tight"
               style={{
                 ...cellBorderStyle,
@@ -218,7 +240,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
             {COLS.map((c) => (
               <th
                 key={c.key}
-                colSpan={3}
+                colSpan={c.key === "TOTAL" ? 4 : 3}
                 className={`font-display px-3 py-2 text-center text-xs font-bold uppercase tracking-wider ${c.headerClass}`}
                 style={{
                   ...cellBorderStyle,
@@ -254,6 +276,17 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
               >
                 YoY
               </th>,
+              ...(c.key === "TOTAL"
+                ? [
+                    <th
+                      key={`${c.key}-growth`}
+                      className={subHeaderClass(c)}
+                      style={subHeaderStyle(c)}
+                    >
+                      Growth
+                    </th>,
+                  ]
+                : []),
             ])}
           </tr>
         </thead>
@@ -346,6 +379,20 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                         <PctCell value={yoy} />
                       </span>
                     </td>,
+                    // Growth column: only for TOTAL
+                    ...(c.key === "TOTAL"
+                      ? [
+                          <td
+                            key={`${m}-${c.key}-growth`}
+                            className={`px-3 py-2 text-right ${c.cellClass}`}
+                            style={{ ...cellBorderStyle, background: c.cellBg }}
+                          >
+                            <span style={estStyle}>
+                              <PctCell value={ytdGrowth(idx)} />
+                            </span>
+                          </td>,
+                        ]
+                      : []),
                   ];
                 })}
               </tr>
@@ -408,6 +455,18 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 >
                   <PctCell value={yoy} />
                 </td>,
+                // Growth column in footer: only for TOTAL — same as full-year YoY
+                ...(c.key === "TOTAL"
+                  ? [
+                      <td
+                        key={`total-${c.key}-growth`}
+                        className="px-3 py-2.5 text-right"
+                        style={{ ...cellBorderStyle, background: totalBg }}
+                      >
+                        <PctCell value={yoy} />
+                      </td>,
+                    ]
+                  : []),
               ];
             })}
           </tr>
