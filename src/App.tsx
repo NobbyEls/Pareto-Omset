@@ -20,6 +20,7 @@ import { DepartmentDonut } from "./components/charts/DepartmentDonut";
 import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
 import { RevenueYoYBarChart } from "./components/charts/RevenueYoYBarChart";
 import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
+import { BrandAnalysis } from "./components/BrandAnalysis";
 import { useDataset } from "./lib/dataset";
 import { useJasaDataset } from "./lib/jasaDataset";
 import {
@@ -198,7 +199,7 @@ export default function App() {
               setSelectedDept("all");
               if (tab === "yearly") {
                 setPrimaryYear("all");
-              } else {
+              } else if (tab === "monthly") {
                 // Bulanan: default to latest year
                 if (data && data.years.length > 0) {
                   setPrimaryYear(data.years[data.years.length - 1]);
@@ -206,6 +207,7 @@ export default function App() {
                 // selectedMonth will auto-snap to latest via existing effect
                 setSelectedMonth(-1);
               }
+              // brand tab: no additional filter reset needed
             }} />
           )}
         </Header>
@@ -331,7 +333,7 @@ export default function App() {
                     selectedDepartments={visibleDepartments}
                   />
                 </>
-              ) : (
+              ) : activeTab === "monthly" ? (
                 <MonthlyAnalysis
                   data={data}
                   year={matrixYear}
@@ -340,6 +342,8 @@ export default function App() {
                   visibleDepartments={visibleDepartments}
                   selectedMonth={selectedMonth}
                 />
+              ) : (
+                <BrandAnalysis />
               )}
 
               <footer

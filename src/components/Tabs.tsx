@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { CalendarRange, CalendarDays } from "lucide-react";
+import { CalendarRange, CalendarDays, Tags } from "lucide-react";
 
-export type TabKey = "yearly" | "monthly";
+export type TabKey = "yearly" | "monthly" | "brand";
 
 interface TabsProps {
   active: TabKey;
@@ -18,6 +18,11 @@ const TAB_DEFS: { key: TabKey; label: string; icon: ReactNode }[] = [
     key: "monthly",
     label: "Analisa Bulanan",
     icon: <CalendarDays className="h-4 w-4" />,
+  },
+  {
+    key: "brand",
+    label: "Analisa Brand",
+    icon: <Tags className="h-4 w-4" />,
   },
 ];
 
