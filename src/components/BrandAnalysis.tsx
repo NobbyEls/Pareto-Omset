@@ -47,7 +47,7 @@ function CustomTooltip({ active, payload }: any) {
     <div
       className="rounded-xl border px-3 py-2 text-xs shadow-lg backdrop-blur"
       style={{
-        background: "rgba(30, 30, 50, 0.85)",
+        background: "var(--bg-card)",
         borderColor: "var(--border-subtle)",
       }}
     >
