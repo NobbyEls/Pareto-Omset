@@ -107,6 +107,9 @@ const cellBorderStyle = {
   borderLeft: "1px solid var(--border-subtle)",
 };
 
+// Total columns: 1 (Bulan) + 4 groups * 3 sub-cols + 1 (Growth) = 14
+const TOTAL_COLSPAN = 1 + COLS.length * 3 + 1;
+
 export function YearlyMatrix({ data, year, estimationKey }: Props) {
   const prevYear = year - 1;
   const hasPrevYear = data.years.includes(prevYear);
@@ -174,6 +177,32 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
   const subHeaderClass = (col: ColumnDef) =>
     `px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wider ${col.headerClass}`;
 
+  /**
+   * YTD Growth: (sum Jan..monthIdx current year) vs (sum Jan..monthIdx prev year).
+   * Includes estimation for current month.
+   */
+  const ytdGrowth = (monthIdx: number): number | null => {
+    if (!hasPrevYear) return null;
+    let ytdCur = 0;
+    let ytdPrev = 0;
+    let hasAnyCur = false;
+    for (let i = 0; i <= monthIdx; i++) {
+      const cur = cellValue(year, i, "TOTAL");
+      const prev = cellValue(prevYear, i, "TOTAL");
+      if (cur.value != null && cur.value !== 0) {
+        ytdCur += cur.value;
+        hasAnyCur = true;
+      }
+      if (prev.value != null) ytdPrev += prev.value;
+    }
+    if (!hasAnyCur || ytdPrev === 0) return null;
+    return ((ytdCur - ytdPrev) / ytdPrev) * 100;
+  };
+
+  const growthHeaderBg = "rgba(34, 197, 94, 0.18)";
+  const growthCellBg = "rgba(34, 197, 94, 0.06)";
+  const growthAccent = "#22c55e";
+
   return (
     <div className="overflow-x-auto rounded-xl">
       <table
@@ -189,7 +218,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
         <thead>
           <tr>
             <th
-              colSpan={1 + COLS.length * 3}
+              colSpan={TOTAL_COLSPAN}
               className="font-display px-3 py-3 text-center text-base font-bold tracking-tight"
               style={{
                 ...cellBorderStyle,
@@ -229,6 +258,17 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 {c.label}
               </th>
             ))}
+            <th
+              rowSpan={2}
+              className="font-display px-3 py-2 text-center text-xs font-bold uppercase tracking-wider"
+              style={{
+                ...cellBorderStyle,
+                background: growthHeaderBg,
+                color: growthAccent,
+              }}
+            >
+              Growth
+            </th>
           </tr>
 
           <tr>
@@ -261,6 +301,7 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
         <tbody>
           {MONTHS_ID.map((m, idx) => {
             const isEst = isCurrentMonth(year, idx);
+            const growth = ytdGrowth(idx);
             return (
               <tr
                 key={m}
@@ -348,6 +389,13 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                     </td>,
                   ];
                 })}
+                {/* Growth column — single merged column */}
+                <td
+                  className="px-3 py-2 text-center"
+                  style={{ ...cellBorderStyle, background: growthCellBg }}
+                >
+                  <PctCell value={growth} />
+                </td>
               </tr>
             );
           })}
@@ -410,6 +458,16 @@ export function YearlyMatrix({ data, year, estimationKey }: Props) {
                 </td>,
               ];
             })}
+            {/* Growth footer — full-year YTD growth (same as last active month) */}
+            <td
+              className="px-3 py-2.5 text-center"
+              style={{
+                ...cellBorderStyle,
+                background: "linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.18))",
+              }}
+            >
+              <PctCell value={hasPrevYear ? pctChange(totals.TOTAL, prevTotals.TOTAL) : null} />
+            </td>
           </tr>
         </tbody>
       </table>
