@@ -41,11 +41,11 @@ function DepartmentChecklist({
   }, []);
 
   const allSelected = selectedDepartments.length === departments.length;
+  const noneSelected = selectedDepartments.length === 0;
 
   const toggleDept = (d: string) => {
     if (selectedDepartments.includes(d)) {
-      const next = selectedDepartments.filter((x) => x !== d);
-      if (next.length > 0) onDepartmentsChange(next);
+      onDepartmentsChange(selectedDepartments.filter((x) => x !== d));
     } else {
       onDepartmentsChange([...selectedDepartments, d]);
     }
@@ -53,17 +53,19 @@ function DepartmentChecklist({
 
   const toggleAll = () => {
     if (allSelected) {
-      onDepartmentsChange([departments[0]]);
+      onDepartmentsChange([]);
     } else {
       onDepartmentsChange([...departments]);
     }
   };
 
-  const label = allSelected
-    ? "Semua Departemen"
-    : selectedDepartments.length === 1
-      ? selectedDepartments[0]
-      : `${selectedDepartments.length} Departemen`;
+  const label = noneSelected
+    ? "Pilih Departemen"
+    : allSelected
+      ? "Semua Departemen"
+      : selectedDepartments.length === 1
+        ? selectedDepartments[0]
+        : `${selectedDepartments.length} Departemen`;
 
   return (
     <div ref={ref} className="relative">
@@ -124,10 +126,10 @@ export function BrandFilters({
 }: BrandFiltersProps) {
   return (
     <div
-      className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl px-5 py-3"
+      className="sticky top-0 z-30 -mx-4 -mt-6 mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 md:-mx-8 md:-mt-8"
       style={{
         background: "var(--grad-primary)",
-        border: "1px solid rgba(255,255,255,0.15)",
+        borderBottom: "1px solid rgba(255,255,255,0.10)",
       }}
     >
       {/* Year filter — dropdown */}
