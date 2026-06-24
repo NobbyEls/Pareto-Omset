@@ -7,51 +7,137 @@ interface Props extends TooltipProps<number, string> {
   showTotal?: boolean;
 }
 
-export function ChartTooltip({ active, payload, label, subtitle, showTotal }: Props) {
+export function ChartTooltip({
+  active,
+  payload,
+  label,
+  subtitle,
+  showTotal,
+}: Props) {
   if (!active || !payload || !payload.length) return null;
 
-  const visible = payload.filter(
+  const preFiltered = payload.filter(
     (p) => p && (p.value as number) != null && p.dataKey !== "__total"
   );
+
+  // Deduplicate bridge-month: if both "YYYY" and "YYYY_est" have non-null values,
+  // hide the _est entry to avoid showing a duplicate tooltip line.
+  const visible = preFiltered.filter((p) => {
+    const key = String(p.dataKey ?? "");
+    if (key.endsWith("_est")) {
+      const baseKey = key.replace("_est", "");
+      const hasActual = preFiltered.some(
+        (other) => String(other.dataKey ?? "") === baseKey && (other.value as number) != null
+      );
+      if (hasActual) return false;
+    }
+    return true;
+  });
   const total = visible.reduce((acc, p) => acc + (Number(p.value) || 0), 0);
 
+  // Detect which year keys are estimated by checking __estimated_YYYY flags in the row
+  const rowData = payload[0]?.payload as Record<string, unknown> | undefined;
+
+  /** Check if a given dataKey represents an estimated value */
+  const isEstimatedEntry = (dataKey: string | undefined): boolean => {
+    if (!dataKey || !rowData) return false;
+    // For "_est" suffixed keys, check the __estimated flag for the base year
+    if (dataKey.endsWith("_est")) {
+      const baseYear = dataKey.replace("_est", "");
+      return rowData[`__estimated_${baseYear}`] === true;
+    }
+    // For main series keys (e.g. "2026"), check __estimated_2026 directly
+    if (rowData[`__estimated_${dataKey}`] === true) {
+      return true;
+    }
+    return false;
+  };
+
+  /** Get display name - append (Est) if the entry is estimated */
+  const getDisplayName = (entry: (typeof visible)[number]): string => {
+    const name = entry.name || String(entry.dataKey);
+    if (isEstimatedEntry(entry.dataKey as string)) {
+      return `${name} (Est)`;
+    }
+    return name;
+  };
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-xs shadow-card backdrop-blur-md dark:border-white/10 dark:bg-[#0f172a]/95">
+    <div
+      className="rounded-xl px-3 py-2.5 text-xs backdrop-blur-md"
+      style={{
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-medium)",
+        boxShadow: "var(--shadow-card)",
+        color: "var(--text-primary)",
+        minWidth: 180,
+      }}
+    >
       <div className="mb-1.5 flex items-center justify-between gap-6">
-        <span className="font-semibold text-slate-800 dark:text-slate-100">
+        <span
+          className="font-display font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
           {label}
         </span>
         {subtitle && (
-          <span className="text-[10px] uppercase tracking-wider text-slate-400">
+          <span
+            className="text-[10px] uppercase tracking-wider"
+            style={{ color: "var(--text-dim)" }}
+          >
             {subtitle}
           </span>
         )}
       </div>
       <div className="space-y-1">
-        {visible.map((p, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between gap-6 text-[12px]"
-          >
-            <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ background: p.color || (p as { stroke?: string }).stroke }}
-              />
-              <span className="text-slate-600 dark:text-slate-300">
-                {p.name}
+        {visible.map((p, i) => {
+          const estimated = isEstimatedEntry(p.dataKey as string);
+          return (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-6 text-[12px]"
+            >
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{
+                    background:
+                      p.color || (p as { stroke?: string }).stroke || "#6366f1",
+                    opacity: estimated ? 0.7 : 1,
+                  }}
+                />
+                <span
+                  style={{
+                    color: "var(--text-muted)",
+                    fontStyle: estimated ? "italic" : "normal",
+                  }}
+                >
+                  {getDisplayName(p)}
+                </span>
               </span>
-            </span>
-            <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-              {formatIDR(p.value as number)}
-            </span>
-          </div>
-        ))}
+              <span
+                className="font-mono font-semibold tabular-nums"
+                style={{
+                  color: "var(--text-primary)",
+                  opacity: estimated ? 0.8 : 1,
+                }}
+              >
+                {formatIDR(p.value as number)}
+              </span>
+            </div>
+          );
+        })}
       </div>
       {showTotal && visible.length > 1 && (
-        <div className="mt-1.5 flex items-center justify-between gap-6 border-t border-slate-200 pt-1.5 text-[12px] dark:border-white/10">
-          <span className="text-slate-500 dark:text-slate-400">Total</span>
-          <span className="font-bold tabular-nums">
+        <div
+          className="mt-1.5 flex items-center justify-between gap-6 pt-1.5 text-[12px]"
+          style={{ borderTop: "1px solid var(--border-subtle)" }}
+        >
+          <span style={{ color: "var(--text-dim)" }}>Total</span>
+          <span
+            className="font-mono font-bold tabular-nums"
+            style={{ color: "var(--tint-share)" }}
+          >
             {formatIDRCompact(total)}
           </span>
         </div>

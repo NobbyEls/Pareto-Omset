@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -29,10 +29,11 @@ interface Props {
 }
 
 /**
- * Multi-year monthly trend (Grand Total per month, summed over selected
- * departments). Each year is rendered as a smooth area with subtle gradient.
+ * Grouped bar chart showing total revenue per month for each selected year
+ * side-by-side (Year-over-Year comparison). Applies estimation for the
+ * current running month.
  */
-export function MonthlyTrendChart({
+export function RevenueYoYBarChart({
   data,
   selectedYears,
   selectedDepartments,
@@ -43,7 +44,7 @@ export function MonthlyTrendChart({
     selectedDepartments.length < DEPARTMENTS.length;
 
   const rows = useMemo(() => {
-    const result = MONTHS_ID.map((m, idx) => {
+    return MONTHS_ID.map((m, idx) => {
       const r: Record<string, number | string | boolean | null> = { month: m };
       for (const y of selectedYears) {
         let raw: number | null;
@@ -65,7 +66,6 @@ export function MonthlyTrendChart({
         if (raw != null) {
           const est = estimateValue(raw, y, idx);
           r[String(y)] = est.value;
-          // Flag for tooltip to show "(Est)" label
           if (est.isEstimated) {
             r[`__estimated_${y}`] = true;
           }
@@ -75,35 +75,19 @@ export function MonthlyTrendChart({
       }
       return r;
     });
-
-    return result;
   }, [data, selectedYears, selectedDepartments, useDeptFilter, estimationKey]);
 
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <AreaChart data={rows} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-        <defs>
-          {selectedYears.map((y, i) => {
-            const color = YEAR_COLORS[i % YEAR_COLORS.length];
-            return (
-              <linearGradient
-                key={y}
-                id={`grad-year-${y}`}
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            );
-          })}
-        </defs>
+      <BarChart
+        data={rows}
+        margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
+      >
         <CartesianGrid
           strokeDasharray="3 3"
           stroke="currentColor"
           className="text-slate-200 dark:text-white/5"
+          vertical={false}
         />
         <XAxis
           dataKey="month"
@@ -123,29 +107,30 @@ export function MonthlyTrendChart({
           tickFormatter={(v: number) => formatIDRCompact(v)}
           width={70}
         />
-        <Tooltip content={<ChartTooltip showTotal={selectedYears.length > 1} />} />
+        <Tooltip
+          cursor={{ fill: "rgba(148,163,184,0.08)" }}
+          content={<ChartTooltip showTotal={selectedYears.length > 1} />}
+        />
         <Legend
           wrapperStyle={{ fontSize: 12 }}
           iconType="circle"
           iconSize={8}
+          align="right"
+          verticalAlign="top"
         />
         {selectedYears.map((y, i) => {
           const color = YEAR_COLORS[i % YEAR_COLORS.length];
           return (
-            <Area
+            <Bar
               key={y}
-              type="monotone"
               dataKey={String(y)}
               name={String(y)}
-              stroke={color}
-              strokeWidth={2.5}
-              fill={`url(#grad-year-${y})`}
-              activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }}
-              connectNulls={false}
+              fill={color}
+              radius={[4, 4, 0, 0]}
             />
           );
         })}
-      </AreaChart>
+      </BarChart>
     </ResponsiveContainer>
   );
 }

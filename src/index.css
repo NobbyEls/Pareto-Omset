@@ -2,91 +2,750 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================
+   PARETO OMSET — Dark glassmorphism theme (matches NobbyEls/omset)
+   ============================================================= */
 :root {
-  color-scheme: light dark;
+  /* Background */
+  --bg-base: #07091a;
+  --bg-deep: #050714;
+  --bg-card: rgba(20, 24, 48, 0.55);
+  --bg-card-hover: rgba(28, 33, 63, 0.7);
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --bg-input: rgba(255, 255, 255, 0.05);
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* Text */
+  --text-primary: #f8fafc;
+  --text-secondary: #f1f5f9;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+
+  /* Brand palette */
+  --indigo: #6366f1;
+  --indigo-light: #818cf8;
+  --purple: #a855f7;
+  --pink: #ec4899;
+  --rose: #f43f5e;
+  --amber: #f59e0b;
+  --emerald: #10b981;
+  --cyan: #06b6d4;
+  --blue: #3b82f6;
+  --sky: #0ea5e9;
+
+  /* Theme-adaptive accent colors used by data cells / chart legends.
+     Dark mode = light/pastel tints (good on dark bg).
+     Light mode (overridden in html:not(.dark)) = much darker so they
+     stay legible on a light card background. */
+  --tint-nb: #a5b4fc;        /* indigo-300 */
+  --tint-pc: #67e8f9;        /* cyan-300 */
+  --tint-jasa: #f9a8d4;      /* pink-300 */
+  --tint-share: #fcd34d;     /* amber-300 */
+  --tint-jasa-sales: #6ee7b7; /* emerald-300 */
+  --tint-year-header: #c7d2fe; /* indigo-200 */
+  --trend-up: #34d399;       /* emerald-400 */
+  --trend-down: #fb7185;     /* rose-400 */
+
+  /* Table header text color — dark mode uses dim; light mode overrides to dark */
+  --th-color: #94a3b8;       /* slate-400 */
+
+  /* Big-number text colors for the Jasa breakdown KPI cards.
+     Same hue family as JASA_PART/SERVICE/SALES_COLOR but tuned for
+     legibility per theme. */
+  --jasa-part-text: #f59e0b;     /* amber-500 — dark mode */
+  --jasa-service-text: #6366f1;  /* indigo-500 — dark mode */
+  --jasa-sales-text: #10b981;    /* emerald-500 — dark mode */
+
+  /* Gradients */
+  --grad-primary: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  --grad-success: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  --grad-warning: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%);
+  --grad-info: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --grad-rose: linear-gradient(135deg, #f43f5e 0%, #f59e0b 100%);
+  --grad-emerald: linear-gradient(135deg, #10b981 0%, #84cc16 100%);
+
+  /* Shadows */
+  --shadow-glow: 0 0 60px rgba(99, 102, 241, 0.18);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+/* Light theme — applied via Tailwind class strategy: when html has no .dark
+   class, we still want a polished experience. */
+html:not(.dark) {
+  --bg-base: #eef1f7;
+  --bg-deep: #e3e8f2;
+  --bg-card: rgba(255, 255, 255, 0.82);
+  --bg-card-hover: rgba(255, 255, 255, 0.96);
+  --bg-glass: rgba(15, 23, 42, 0.05);
+  --bg-input: rgba(15, 23, 42, 0.05);
+
+  --border-subtle: rgba(15, 23, 42, 0.10);
+  --border-medium: rgba(15, 23, 42, 0.16);
+  --border-strong: rgba(15, 23, 42, 0.26);
+
+  --text-primary: #020617;
+  --text-secondary: #0f172a;
+  --text-muted: #1e293b;
+  --text-dim: #334155;
+
+  --shadow-glow: 0 0 60px rgba(99, 102, 241, 0.1);
+  --shadow-card: 0 8px 28px rgba(15, 23, 42, 0.1);
+  --shadow-elevated: 0 20px 50px rgba(15, 23, 42, 0.15);
+
+  /* Light-mode override of theme-adaptive accents so dept-tint text and
+     trend badges stay legible on a near-white surface. */
+  --tint-nb: #4338ca;         /* indigo-700 */
+  --tint-pc: #0e7490;         /* cyan-700 */
+  --tint-jasa: #be185d;       /* pink-700 */
+  --tint-share: #b45309;      /* amber-700 */
+  --tint-jasa-sales: #047857; /* emerald-700 */
+  --tint-year-header: #4338ca; /* indigo-700 */
+  --trend-up: #047857;        /* emerald-700 */
+  --trend-down: #be123c;      /* rose-700 */
+
+  /* Table header text — dark/readable in light mode */
+  --th-color: #1e293b;        /* slate-800 */
+
+  --jasa-part-text: #b45309;     /* amber-700 — light mode */
+  --jasa-service-text: #4338ca;  /* indigo-700 — light mode */
+  --jasa-sales-text: #047857;    /* emerald-700 — light mode */
+}
+
+* {
+  box-sizing: border-box;
 }
 
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100vh;
+}
+
+html {
+  overflow-x: clip;
+  color-scheme: light dark;
 }
 
 body {
-  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Roboto, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(at 20% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
+  background-attachment: fixed;
 }
 
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 dark:bg-[#0a0f1c] dark:text-slate-100;
+html:not(.dark) body {
+  background-image:
+    radial-gradient(at 20% 0%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(236, 72, 153, 0.06) 0%, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+}
+
+/* ================= Background Decoration ================= */
+.bg-decoration {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: floatOrb 20s ease-in-out infinite;
+}
+
+html:not(.dark) .orb {
+  opacity: 0.22;
+}
+
+.orb-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #6366f1, transparent);
+  top: -200px;
+  left: -100px;
+}
+
+.orb-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #ec4899, transparent);
+  top: 40%;
+  right: -150px;
+  animation-delay: -7s;
+}
+
+.orb-3 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, #10b981, transparent);
+  bottom: -300px;
+  left: 30%;
+  animation-delay: -14s;
+}
+
+@keyframes floatOrb {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(40px, -30px) scale(1.05);
+  }
+  66% {
+    transform: translate(-30px, 40px) scale(0.95);
   }
 }
 
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+/* ================= Component Layer ================= */
 @layer components {
   .glass-card {
-    @apply rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-xl shadow-card
-           dark:border-white/5 dark:bg-white/[0.03];
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-card);
+    transition: border-color 0.3s ease, transform 0.3s ease;
+  }
+
+  .glass-card:hover {
+    border-color: var(--border-strong);
   }
 
   .kpi-card {
-    @apply glass-card p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow;
+    @apply glass-card p-5 transition-all duration-300;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevated);
   }
 
-  .chip {
-    @apply inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600
-           dark:border-white/10 dark:bg-white/5 dark:text-slate-300;
+  .btn-glass {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-medium);
+    color: var(--text-primary);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all 0.2s;
   }
-
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition
-           hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98]
-           dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10;
+  .btn-glass:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+  .btn-glass:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-3.5 py-2 text-sm font-semibold text-white shadow-glow transition
-           hover:bg-brand-600 active:scale-[0.98];
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 16px;
+    background: var(--grad-primary);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-glow);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
   }
 
   .input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition
-           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20
-           dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-brand-400;
+    background: var(--bg-input);
+    border: 1px solid var(--border-medium);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input::placeholder {
+    color: var(--text-dim);
+  }
+  .input:focus {
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
   }
 
-  .skeleton {
-    @apply rounded-md bg-slate-200/70 dark:bg-white/10;
-    background-image: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.06),
-      transparent
-    );
-    background-size: 1000px 100%;
-    @apply animate-shimmer;
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-medium);
+    color: var(--text-muted);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .chip-active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: var(--indigo-light);
+  }
+
+  /* Brand text — gradient headline */
+  .brand-gradient {
+    font-family: "Space Grotesk", sans-serif;
+    background: linear-gradient(135deg, #fff 0%, #c7d2fe 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+  }
+  html:not(.dark) .brand-gradient {
+    background: linear-gradient(135deg, #4338ca 0%, #db2777 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Section heading — Space Grotesk */
+  .heading {
+    font-family: "Space Grotesk", sans-serif;
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Chart-tag pill (color hint) */
+  .chart-tag {
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+  .tag-blue {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  .tag-purple {
+    background: rgba(168, 85, 247, 0.15);
+    color: #d8b4fe;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+  }
+  .tag-pink {
+    background: rgba(236, 72, 153, 0.15);
+    color: #f9a8d4;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+  }
+  .tag-green {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .tag-amber {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+  .tag-cyan {
+    background: rgba(6, 182, 212, 0.15);
+    color: #67e8f9;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+  }
+  html:not(.dark) .tag-blue {
+    color: #1e3a8a;
+  }
+  html:not(.dark) .tag-purple {
+    color: #581c87;
+  }
+  html:not(.dark) .tag-pink {
+    color: #831843;
+  }
+  html:not(.dark) .tag-green {
+    color: #064e3b;
+  }
+  html:not(.dark) .tag-amber {
+    color: #78350f;
+  }
+  html:not(.dark) .tag-cyan {
+    color: #0e4a5c;
+  }
+  /* ========= Filter bar (omset-style) ========= */
+  .filters-section {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    padding: 10px 14px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+  }
+  .filters-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--grad-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+    align-self: center;
+  }
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px 14px;
+    flex: 1;
+    min-width: 0;
+  }
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .filter-group label {
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .filter-group select {
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-medium);
+    border-radius: 9px;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    width: 100%;
+  }
+  .filter-group select:focus {
+    outline: none;
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  }
+  .filter-group select option {
+    background: #0f1424;
+    color: var(--text-primary);
+  }
+  .btn-reset {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    background: rgba(244, 63, 94, 0.1);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    align-self: flex-end;
+    height: 38px;
+  }
+  .btn-reset:hover {
+    background: rgba(244, 63, 94, 0.2);
+    border-color: rgba(244, 63, 94, 0.5);
+    transform: translateY(-1px);
+  }
+  html:not(.dark) .filter-group select option {
+    background: #ffffff;
+    color: #0f172a;
   }
 }
-
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300/70 dark:bg-white/10;
-  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400/80 dark:bg-white/20;
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: padding-box;
+}
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.04);
+}
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+  background-clip: padding-box;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.3);
+  background-clip: padding-box;
 }
 
-/* Recharts override for dark mode legibility */
+/* Recharts override */
 .recharts-tooltip-wrapper:focus {
   outline: none;
+}
+.recharts-default-tooltip {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-medium) !important;
+  border-radius: 10px !important;
+}
+
+/* ======= Light-mode matrix table tint overrides ======= */
+html:not(.dark) .matrix-cell-nb { background: rgba(79, 70, 229, 0.12) !important; }
+html:not(.dark) .matrix-cell-pc { background: rgba(6, 182, 212, 0.12) !important; }
+html:not(.dark) .matrix-cell-jasa { background: rgba(219, 39, 119, 0.12) !important; }
+html:not(.dark) .matrix-cell-total { background: rgba(217, 119, 6, 0.12) !important; }
+html:not(.dark) .matrix-header-nb { background: rgba(79, 70, 229, 0.22) !important; color: #3730a3 !important; }
+html:not(.dark) .matrix-header-pc { background: rgba(6, 182, 212, 0.22) !important; color: #0e7490 !important; }
+html:not(.dark) .matrix-header-jasa { background: rgba(219, 39, 119, 0.22) !important; color: #9d174d !important; }
+html:not(.dark) .matrix-header-total { background: rgba(217, 119, 6, 0.22) !important; color: #92400e !important; }
+html:not(.dark) .matrix-pct-pos { color: #047857 !important; }
+html:not(.dark) .matrix-pct-neg { color: #be123c !important; }
+
+
+
+/* =============================================================
+   LOADING OVERLAY (initial load + Update Data refresh)
+   Mirrors NobbyEls/ParetoPC visual language: full-screen glass
+   backdrop, centered logo card, indigo→pink progress bar.
+   ============================================================= */
+.pareto-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 9, 26, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.4s ease;
+}
+
+html:not(.dark) .pareto-loading-overlay {
+  background: rgba(238, 241, 247, 0.96);
+}
+
+.pareto-loading-overlay--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pareto-loading-content {
+  text-align: center;
+  max-width: 380px;
+  padding: 40px;
+  width: 100%;
+}
+
+.pareto-loading-logo {
+  margin: 0 auto 24px;
+  width: 240px;
+  height: 240px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 60px rgba(99, 102, 241, 0.4);
+  overflow: hidden;
+}
+
+html:not(.dark) .pareto-loading-logo {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.pareto-loading-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+  border-radius: 12px;
+}
+
+.pareto-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: pareto-loading-spin 0.8s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes pareto-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pareto-loading-title {
+  margin: 16px 0 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.pareto-loading-status {
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+}
+
+.pareto-loading-detail {
+  font-size: 0.8rem;
+  color: #f43f5e;
+  min-height: 18px;
+  margin-top: 8px;
+}
+
+.pareto-progress-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+
+html:not(.dark) .pareto-progress-track {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.pareto-progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  border-radius: 2px;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+  transition: width 0.3s ease;
+}
+
+/* Determinate variant: width set inline via style. */
+.pareto-progress-fill--determinate {
+  width: 0%;
+}
+
+/* Indeterminate variant: a 35% wide pill that slides across. */
+.pareto-progress-fill--indeterminate {
+  position: absolute;
+  width: 35%;
+  left: 0;
+  animation: pareto-progress-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes pareto-progress-shimmer {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pareto-loading-logo {
+    width: 160px;
+    height: 160px;
+  }
+}
+
+
+
+/* =============================================================
+   HEADER LOGO IMAGE — ELS.ID brand mark next to the app title.
+   Mirrors NobbyEls/ParetoPC's `.header-logo-img`.
+   ============================================================= */
+.header-logo-img {
+  height: 40px;
+  width: auto;
+  max-width: 200px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+@media (min-width: 768px) {
+  .header-logo-img {
+    height: 46px;
+    margin-left: 14px;
+  }
 }

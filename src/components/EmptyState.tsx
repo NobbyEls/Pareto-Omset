@@ -3,10 +3,15 @@ import { AlertTriangle, Database, Loader2 } from "lucide-react";
 export function LoadingState() {
   return (
     <div className="glass-card flex flex-col items-center justify-center gap-3 p-12 text-center">
-      <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--indigo)" }} />
       <div>
-        <div className="font-semibold">Memuat data dari Google Sheets…</div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">
+        <div
+          className="font-display font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Memuat data dari Google Sheets…
+        </div>
+        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
           Mengambil CSV terbaru dari spreadsheet publik.
         </div>
       </div>
@@ -17,12 +22,23 @@ export function LoadingState() {
 export function ErrorState({ message }: { message: string }) {
   return (
     <div className="glass-card flex flex-col items-center justify-center gap-3 p-12 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/10 text-rose-500">
+      <div
+        className="grid h-12 w-12 place-items-center rounded-2xl"
+        style={{
+          background: "rgba(244, 63, 94, 0.15)",
+          color: "var(--trend-down)",
+        }}
+      >
         <AlertTriangle className="h-6 w-6" />
       </div>
       <div>
-        <div className="font-semibold">Gagal memuat data</div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">
+        <div
+          className="font-display font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Gagal memuat data
+        </div>
+        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
           {message}
         </div>
       </div>
@@ -33,12 +49,24 @@ export function ErrorState({ message }: { message: string }) {
 export function EmptyState() {
   return (
     <div className="glass-card flex flex-col items-center justify-center gap-3 p-12 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-500/10 text-slate-500">
+      <div
+        className="grid h-12 w-12 place-items-center rounded-2xl"
+        style={{
+          background: "var(--bg-glass)",
+          color: "var(--text-muted)",
+          border: "1px solid var(--border-medium)",
+        }}
+      >
         <Database className="h-6 w-6" />
       </div>
       <div>
-        <div className="font-semibold">Belum ada data terbaca</div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">
+        <div
+          className="font-display font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Belum ada data terbaca
+        </div>
+        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
           Pastikan spreadsheet sudah dipublish ke web (File → Publish to web →
           Republish) dan kolom tahun (mis. 2024, 2025) ada di baris pertama.
         </div>

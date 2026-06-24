@@ -59,8 +59,8 @@ export function DepartmentDonut({
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ display: "none" }}
-            wrapperStyle={{ outline: "none" }}
+            wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}
+            offset={20}
             content={({ active, payload }) => {
               if (!active || !payload || !payload.length) return null;
               const p = payload[0];

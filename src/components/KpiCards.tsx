@@ -33,38 +33,53 @@ interface KpiProps {
   value: string;
   sublabel?: string;
   trend?: number | null;
-  accent?: string;
+  /** Tailwind-style gradient string for the icon backdrop. */
+  gradient: string;
 }
 
-function KpiCard({ icon, label, value, sublabel, trend, accent }: KpiProps) {
+function KpiCard({ icon, label, value, sublabel, trend, gradient }: KpiProps) {
   const trendUp = trend != null && trend >= 0;
   return (
     <div className="kpi-card animate-fadeIn">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <span
+          className="text-xs font-medium uppercase tracking-wider"
+          style={{ color: "var(--text-dim)" }}
+        >
           {label}
         </span>
         <div
-          className={classNames(
-            "grid h-9 w-9 place-items-center rounded-xl",
-            accent ?? "bg-brand-500/10 text-brand-600 dark:text-brand-400"
-          )}
+          className="grid h-10 w-10 place-items-center rounded-xl text-white"
+          style={{
+            background: gradient,
+            boxShadow: "0 0 25px rgba(99,102,241,0.25)",
+          }}
         >
           {icon}
         </div>
       </div>
-      <div className="mt-3 text-2xl font-bold tracking-tight md:text-[28px]">
+      <div
+        className="mt-3 font-display text-2xl font-bold tracking-tight md:text-[28px]"
+        style={{ color: "var(--text-primary)" }}
+      >
         {value}
       </div>
-      <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+      <div
+        className="mt-1 flex flex-wrap items-center gap-2 text-xs"
+        style={{ color: "var(--text-muted)" }}
+      >
         {trend != null && (
           <span
             className={classNames(
-              "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold",
-              trendUp
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+              "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold"
             )}
+            style={{
+              background: trendUp
+                ? "rgba(16, 185, 129, 0.15)"
+                : "rgba(244, 63, 94, 0.15)",
+              color: trendUp ? "var(--trend-up)" : "var(--trend-down)",
+              border: `1px solid ${trendUp ? "rgba(16, 185, 129, 0.3)" : "rgba(244, 63, 94, 0.3)"}`,
+            }}
           >
             {trendUp ? (
               <TrendingUp className="h-3 w-3" />
@@ -95,7 +110,6 @@ export function KpiCards({
       ? ((totalThisYear - totalPrevYear) / totalPrevYear) * 100
       : null;
 
-  // Best month (by Grand Total) for primary year
   let bestMonthIdx = -1;
   let bestMonthVal = -1;
   for (let i = 0; i < 12; i++) {
@@ -106,13 +120,7 @@ export function KpiCards({
     }
   }
 
-  // Top department for the year (across selected departments)
-  const deptTotals: Record<Department, number> = {
-    NB: 0,
-    PC: 0,
-    "JASA SERVICE": 0,
-    JASA: 0,
-  };
+  const deptTotals: Record<Department, number> = { NB: 0, PC: 0, JASA: 0 };
   for (let i = 0; i < 12; i++) {
     const m = data.pivot[primaryYear]?.[i];
     if (!m) continue;
@@ -139,7 +147,6 @@ export function KpiCards({
   const topDeptShare =
     sumDeptsVisible > 0 ? (topDeptVal / sumDeptsVisible) * 100 : 0;
 
-  // Avg per active month
   let activeMonths = 0;
   for (let i = 0; i < 12; i++) {
     if (totalFor(data.pivot, primaryYear, i) != null) activeMonths++;
@@ -154,14 +161,14 @@ export function KpiCards({
         value={formatIDRCompact(totalThisYear)}
         sublabel={formatIDR(totalThisYear)}
         trend={yoy}
-        accent="bg-brand-500/10 text-brand-600 dark:text-brand-400"
+        gradient="linear-gradient(135deg, #6366f1 0%, #ec4899 100%)"
       />
       <KpiCard
         icon={<CalendarDays className="h-5 w-5" />}
-        label={`Rata-rata / Bulan`}
+        label="Rata-rata / Bulan"
         value={formatIDRCompact(avgPerMonth)}
         sublabel={`Dari ${activeMonths} bulan aktif`}
-        accent="bg-sky-500/10 text-sky-600 dark:text-sky-400"
+        gradient="linear-gradient(135deg, #06b6d4 0%, #6366f1 100%)"
       />
       <KpiCard
         icon={<Trophy className="h-5 w-5" />}
@@ -172,16 +179,14 @@ export function KpiCards({
             ? `${formatIDRCompact(bestMonthVal)} omset`
             : "Belum ada data"
         }
-        accent="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        gradient="linear-gradient(135deg, #f59e0b 0%, #ec4899 100%)"
       />
       <KpiCard
         icon={<Crown className="h-5 w-5" />}
         label="Departemen Teratas"
         value={topDept}
-        sublabel={`${formatIDRCompact(topDeptVal)} • ${topDeptShare.toFixed(
-          1
-        )}% kontribusi`}
-        accent="bg-purple-500/10 text-purple-600 dark:text-purple-400"
+        sublabel={`${formatIDRCompact(topDeptVal)} • ${topDeptShare.toFixed(1)}% kontribusi`}
+        gradient="linear-gradient(135deg, #a855f7 0%, #06b6d4 100%)"
       />
     </div>
   );

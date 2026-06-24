@@ -1,239 +1,365 @@
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "./components/Header";
-import { Filters } from "./components/Filters";
-import { KpiCards } from "./components/KpiCards";
+import { Filters, type DeptFilter, type KotaFilter, type YearFilter } from "./components/Filters";
+import { Tabs, type TabKey } from "./components/Tabs";
 import { SectionCard } from "./components/SectionCard";
 import { DataTable } from "./components/DataTable";
-import { CsvUrlInput } from "./components/CsvUrlInput";
+import { YearlyMatrix } from "./components/YearlyMatrix";
+import { JasaMatrix } from "./components/JasaMatrix";
+import { BgDecoration } from "./components/BgDecoration";
+import { KotaBreakdown } from "./components/KotaBreakdown";
+import { JasaBreakdown } from "./components/JasaBreakdown";
+import { MonthlyAnalysis } from "./components/MonthlyAnalysis";
 import {
   EmptyState,
   ErrorState,
-  LoadingState,
 } from "./components/EmptyState";
+import { LoadingOverlay } from "./components/LoadingOverlay";
 import { MonthlyTrendChart } from "./components/charts/MonthlyTrendChart";
 import { DepartmentDonut } from "./components/charts/DepartmentDonut";
 import { DepartmentStackedBar } from "./components/charts/DepartmentStackedBar";
-import { YoYChart } from "./components/charts/YoYChart";
+import { RevenueYoYBarChart } from "./components/charts/RevenueYoYBarChart";
 import { DepartmentDeepDive } from "./components/charts/DepartmentDeepDive";
 import { BrandAnalysis } from "./components/BrandAnalysis";
 import { useDataset } from "./lib/dataset";
-import { DEPARTMENTS, type Department } from "./lib/csvParser";
-import { classNames } from "./lib/format";
-
-type TabId = "omset" | "brand";
+import { useJasaDataset } from "./lib/jasaDataset";
+import {
+  DEPARTMENTS,
+  KOTA_NAMES,
+  pivotForKota,
+  type Department,
+  type KotaCode,
+  type ParsedDataset,
+} from "./lib/csvParser";
 
 export default function App() {
-  const { data, loading, error, fetchedAt, csvUrl, refresh, setCsvUrl } =
-    useDataset();
+  const { data, loading, refreshing, error, fetchedAt, fromCache, isStale, updateData } = useDataset();
+  // Lift Jasa dataset to App level so setDataDate() is called as early as
+  // possible -- before estimation-dependent components first render.
+  const jasaState = useJasaDataset();
 
-  const [activeTab, setActiveTab] = useState<TabId>("omset");
-  const [selectedYears, setSelectedYears] = useState<number[]>([]);
-  const [primaryYear, setPrimaryYear] = useState<number | null>(null);
-  const [selectedDepartments, setSelectedDepartments] = useState<Department[]>([
-    ...DEPARTMENTS,
-  ]);
+  // When jasaState.data transitions from null to non-null, parseJasaCSV has
+  // run and setDataDate() was called. Components that use estimateValue() need
+  // to re-run their memos. This key flips 0->1 to invalidate those memos.
+  const estimationKey = jasaState.data ? 1 : 0;
 
-  // Initialize / reconcile selected years when data loads.
+  const [primaryYear, setPrimaryYear] = useState<YearFilter>("all");
+  const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
+  const [selectedDept, setSelectedDept] = useState<DeptFilter>("all");
+  const [activeTab, setActiveTab] = useState<TabKey>("yearly");
+  const [selectedMonth, setSelectedMonth] = useState<number>(-1);
+
   useEffect(() => {
     if (!data) return;
     if (data.years.length === 0) {
-      setSelectedYears([]);
-      setPrimaryYear(null);
+      setPrimaryYear("all");
       return;
     }
-    setSelectedYears((prev) => {
-      const valid = prev.filter((y) => data.years.includes(y));
-      return valid.length ? valid : data.years.slice();
-    });
+    // Keep current selection valid; default to "all".
     setPrimaryYear((prev) => {
-      if (prev != null && data.years.includes(prev)) return prev;
-      return data.years[data.years.length - 1];
+      if (prev === "all") return "all";
+      if (data.years.includes(prev)) return prev;
+      return "all";
     });
   }, [data]);
 
   const hasData = !!data && data.records.length > 0;
-  const ready = hasData && primaryYear != null && selectedYears.length > 0;
+  const ready = hasData && primaryYear != null;
 
-  const yoyAvailable = useMemo(
-    () =>
-      ready &&
-      data!.years.includes((primaryYear as number) - 1),
-    [ready, data, primaryYear]
+  /** The actual numeric year used for matrix/KPI. When "all", use latest. */
+  const matrixYear: number | null = useMemo(() => {
+    if (!data || data.years.length === 0) return null;
+    if (primaryYear === "all") return data.years[data.years.length - 1];
+    return primaryYear;
+  }, [data, primaryYear]);
+
+  /**
+   * View dataset: same shape as `data`, but `pivot` reflects the kota filter.
+   */
+  const viewData: ParsedDataset | null = useMemo(() => {
+    if (!data) return null;
+    return { ...data, pivot: pivotForKota(data, selectedKota) };
+  }, [data, selectedKota]);
+
+  /** Department list to feed downstream charts/matrices. */
+  const visibleDepartments: Department[] = useMemo(
+    () => (selectedDept === "all" ? [...DEPARTMENTS] : [selectedDept]),
+    [selectedDept]
   );
 
+  /** Visible kotas based on the global kota filter. */
+  const visibleKotas: KotaCode[] = useMemo(
+    () => (data ? (selectedKota === "all" ? data.kotas : [selectedKota]) : []),
+    [data, selectedKota]
+  );
+
+  /** Available months for the monthly tab (months that have data for current filters). */
+  const availableMonths: number[] = useMemo(() => {
+    if (!data || matrixYear == null) return [];
+    const months: number[] = [];
+    for (let m = 0; m < 12; m++) {
+      for (const k of visibleKotas) {
+        const cell = data.pivotKota[matrixYear]?.[m]?.[k];
+        if (!cell) continue;
+        let any = false;
+        for (const d of visibleDepartments) {
+          if (typeof cell[d] === "number") { any = true; break; }
+        }
+        if (any) { months.push(m); break; }
+      }
+    }
+    return months;
+  }, [data, matrixYear, visibleKotas, visibleDepartments]);
+
+  // Snap selectedMonth into availableMonths when filters change.
+  useEffect(() => {
+    if (availableMonths.length === 0) return;
+    if (!availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    }
+  }, [availableMonths, selectedMonth]);
+
+  // Initialize selectedMonth to latest available month on first data load.
+  useEffect(() => {
+    if (availableMonths.length > 0 && selectedMonth === -1) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableMonths]);
+
+  /** Trend chart years: when "all", overlay every year in the dataset. */
+  const trendYears = useMemo(() => {
+    if (!ready || !viewData) return [];
+    if (primaryYear === "all") return [...viewData.years];
+    const prev = primaryYear - 1;
+    const out = [primaryYear];
+    if (viewData.years.includes(prev)) out.unshift(prev);
+    return out;
+  }, [ready, viewData, primaryYear]);
+
+  const handleReset = () => {
+    setPrimaryYear("all");
+    setSelectedKota("all");
+    setSelectedDept("all");
+  };
+
+  const kotaLabel =
+    selectedKota === "all" ? "Semua Kota" : KOTA_NAMES[selectedKota];
+
+  /**
+   * The full-screen loading splash should appear:
+   *  - on the very first load, before any cached data is on screen
+   *  - whenever the user clicks "Update Data" (refreshing === true)
+   * It hides itself otherwise. Distinct copy per scenario so the user
+   * understands what's happening.
+   */
+  const showLoadingOverlay = (loading && !data) || refreshing;
+  const isInitialLoad = loading && !data;
+  const overlayTitle = isInitialLoad
+    ? "Memuat Data Analytics"
+    : "Memperbarui Data";
+  const overlayStatus = isInitialLoad
+    ? `Mengambil data ${new Date().getFullYear()}...`
+    : "Sinkronisasi dengan Apps Script...";
+
   return (
-    <div className="min-h-screen">
-      <Header
-        loading={loading}
-        fetchedAt={fetchedAt}
-        onRefresh={refresh}
-        csvUrl={csvUrl}
+    <div className="relative min-h-screen">
+      <BgDecoration />
+
+      <LoadingOverlay
+        visible={showLoadingOverlay}
+        title={overlayTitle}
+        status={overlayStatus}
       />
 
-      <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8">
-        {/* Tab navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-white/10 dark:bg-white/5">
-            <button
-              onClick={() => setActiveTab("omset")}
-              className={classNames(
-                "rounded-lg px-4 py-2 text-sm font-semibold transition",
-                activeTab === "omset"
-                  ? "bg-brand-500 text-white shadow-glow"
-                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
-              )}
-            >
-              Analisa Omset
-            </button>
-            <button
-              onClick={() => setActiveTab("brand")}
-              className={classNames(
-                "rounded-lg px-4 py-2 text-sm font-semibold transition",
-                activeTab === "brand"
-                  ? "bg-brand-500 text-white shadow-glow"
-                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
-              )}
-            >
-              Analisa Brand
-            </button>
-          </div>
-          {activeTab === "omset" && (
-            <CsvUrlInput url={csvUrl} onChange={setCsvUrl} />
+      <div className="relative z-10">
+        <Header loading={loading} refreshing={refreshing} fetchedAt={fetchedAt} fromCache={fromCache} isStale={isStale} onUpdateData={updateData}>
+          {ready && data && (
+            <Filters
+              years={data.years}
+              kotas={data.kotas}
+              selectedYear={primaryYear}
+              onYearChange={(v) => setPrimaryYear(v)}
+              selectedKota={selectedKota}
+              onKotaChange={setSelectedKota}
+              selectedDept={selectedDept}
+              onDeptChange={setSelectedDept}
+              activeTab={activeTab}
+              selectedMonth={selectedMonth}
+              onMonthChange={setSelectedMonth}
+              availableMonths={availableMonths}
+              onReset={handleReset}
+            />
           )}
-        </div>
+          {ready && data && (
+            <Tabs active={activeTab} onChange={(tab) => {
+              setActiveTab(tab);
+              // Reset all filters to tab-specific defaults
+              setSelectedKota("all");
+              setSelectedDept("all");
+              if (tab === "yearly") {
+                setPrimaryYear("all");
+              } else if (tab === "monthly") {
+                // Bulanan: default to latest year
+                if (data && data.years.length > 0) {
+                  setPrimaryYear(data.years[data.years.length - 1]);
+                }
+                // selectedMonth will auto-snap to latest via existing effect
+                setSelectedMonth(-1);
+              }
+              // brand tab: no additional filter reset needed
+            }} />
+          )}
+        </Header>
 
-        {/* Tab description */}
-        {activeTab === "omset" && (
-          <div>
-            <h2 className="text-xl font-bold tracking-tight md:text-2xl">
-              Analisa Omset
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Pantau performa bulanan dan tahunan dari spreadsheet yang
-              ter-update otomatis setiap hari.
-            </p>
-          </div>
-        )}
-        {activeTab === "brand" && (
-          <div>
-            <h2 className="text-xl font-bold tracking-tight md:text-2xl">
-              Analisa Brand
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Analisa kontribusi brand berdasarkan omset, diurutkan dari yang
-              tertinggi (Pareto).
-            </p>
-          </div>
-        )}
+        <main className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8">
+          {!loading && error && <ErrorState message={error} />}
+          {!loading && !error && data && data.records.length === 0 && (
+            <EmptyState />
+          )}
 
-        {/* Omset Tab */}
-        {activeTab === "omset" && (
-          <>
-            {loading && !data && <LoadingState />}
-            {!loading && error && <ErrorState message={error} />}
-            {!loading && !error && data && data.records.length === 0 && (
-              <EmptyState />
-            )}
-
-            {ready && data && primaryYear != null && (
-              <>
-                <Filters
-                  years={data.years}
-                  selectedYears={selectedYears}
-                  onYearsChange={setSelectedYears}
-                  departments={[...DEPARTMENTS]}
-                  selectedDepartments={selectedDepartments}
-                  onDepartmentsChange={setSelectedDepartments}
-                  primaryYear={primaryYear}
-                  onPrimaryYearChange={setPrimaryYear}
-                />
-
-                <KpiCards
-                  data={data}
-                  primaryYear={primaryYear}
-                  selectedDepartments={selectedDepartments}
-                />
-
-                <div className="grid gap-5 xl:grid-cols-3">
+          {ready && viewData && data && matrixYear != null && (
+            <>
+              {activeTab === "yearly" ? (
+                <>
                   <SectionCard
-                    title="Tren Bulanan Multi-Tahun"
-                    description="Total omset per bulan untuk semua tahun yang dipilih"
-                    className="xl:col-span-2"
+                    title={`Tren Bulanan • ${kotaLabel}`}
+                    description={
+                      trendYears.length > 1
+                        ? `Total omset per bulan • ${trendYears.join(" vs ")}`
+                        : `Total omset per bulan • ${matrixYear}`
+                    }
+                    tag={{ label: "YoY · Trend", tone: "blue" }}
                   >
                     <MonthlyTrendChart
-                      data={data}
-                      selectedYears={selectedYears}
-                      selectedDepartments={selectedDepartments}
+                      data={viewData}
+                      selectedYears={trendYears}
+                      selectedDepartments={visibleDepartments}
+                      estimationKey={estimationKey}
                     />
                   </SectionCard>
 
                   <SectionCard
-                    title="Komposisi Departemen"
-                    description={`Distribusi omset ${primaryYear} per departemen`}
+                    title={`Revenue Bulanan • Year over Year • ${kotaLabel}`}
+                    description={
+                      trendYears.length > 1
+                        ? `Total revenue per bulan • ${trendYears.join(" vs ")}`
+                        : `Total revenue per bulan • ${matrixYear}`
+                    }
+                    tag={{ label: "YoY · Revenue", tone: "green" }}
                   >
-                    <DepartmentDonut
-                      data={data}
-                      primaryYear={primaryYear}
-                      selectedDepartments={selectedDepartments}
+                    <RevenueYoYBarChart
+                      data={viewData}
+                      selectedYears={trendYears}
+                      selectedDepartments={visibleDepartments}
+                      estimationKey={estimationKey}
                     />
                   </SectionCard>
-                </div>
 
-                <div className="grid gap-5 xl:grid-cols-2">
                   <SectionCard
-                    title="Stacked Bulanan per Departemen"
-                    description={`Kontribusi tiap departemen tiap bulan • ${primaryYear}`}
+                    title={`Matriks Bulanan ${matrixYear} • ${kotaLabel}`}
+                    description="Omset, MoM (Month-over-Month) & YoY (Year-over-Year) per departemen + total. MoM bulan Januari dihitung dari Desember tahun sebelumnya."
+                    tag={{ label: "Tahunan · Pivot", tone: "purple" }}
                   >
-                    <DepartmentStackedBar
-                      data={data}
-                      primaryYear={primaryYear}
-                      selectedDepartments={selectedDepartments}
-                    />
+                    <YearlyMatrix data={viewData} year={matrixYear} estimationKey={estimationKey} />
                   </SectionCard>
+
+                  {jasaState.data && (
+                    <SectionCard
+                      title={`Matriks Bulanan Jasa 2026 • ${selectedKota === "all" ? "Semua Kota" : KOTA_NAMES[selectedKota]}`}
+                      description="Breakdown Jasa Sales, Jasa Service, Jasa Part per bulan dengan MoM."
+                      tag={{ label: "Jasa · Pivot", tone: "amber" }}
+                    >
+                      <JasaMatrix jasaState={jasaState} selectedKota={selectedKota} />
+                    </SectionCard>
+                  )}
+
+                  <SectionCard
+                    title={`Performa per Kota • ${matrixYear}`}
+                    description="Total omset per cabang dengan share kontribusi dan YoY. Klik header untuk mengurutkan."
+                    tag={{ label: "Kota · Breakdown", tone: "amber" }}
+                  >
+                    <KotaBreakdown data={data} year={matrixYear} estimationKey={estimationKey} />
+                  </SectionCard>
+
+                  <JasaBreakdown
+                    jasaState={jasaState}
+                    selectedYear={primaryYear}
+                    selectedKota={selectedKota}
+                    selectedDept={selectedDept}
+                  />
+
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    <SectionCard
+                      title="Komposisi Departemen"
+                      description={`Distribusi omset ${matrixYear} per departemen • ${kotaLabel}`}
+                      tag={{ label: "Mix", tone: "pink" }}
+                    >
+                      <DepartmentDonut
+                        data={viewData}
+                        primaryYear={matrixYear}
+                        selectedDepartments={visibleDepartments}
+                      />
+                    </SectionCard>
+
+                    <SectionCard
+                      title="Stacked Bulanan per Departemen"
+                      description={`Kontribusi tiap departemen tiap bulan • ${kotaLabel}`}
+                      tag={{ label: "Stack", tone: "cyan" }}
+                    >
+                      <DepartmentStackedBar
+                        data={viewData}
+                        primaryYear={matrixYear}
+                        selectedDepartments={visibleDepartments}
+                      />
+                    </SectionCard>
+                  </div>
 
                   <SectionCard
                     title="Performa Departemen"
-                    description={`Tren bulanan setiap departemen di ${primaryYear}`}
+                    description={`Tren bulanan setiap departemen di ${matrixYear} • ${kotaLabel}`}
+                    tag={{ label: "Lines", tone: "purple" }}
                   >
                     <DepartmentDeepDive
-                      data={data}
-                      primaryYear={primaryYear}
-                      selectedDepartments={selectedDepartments}
+                      data={viewData}
+                      primaryYear={matrixYear}
+                      selectedDepartments={visibleDepartments}
                     />
                   </SectionCard>
-                </div>
 
-                {yoyAvailable && (
-                  <SectionCard
-                    title={`Year-over-Year • ${primaryYear} vs ${primaryYear - 1}`}
-                    description="Bandingkan omset bulanan dan persentase pertumbuhan tahunan"
-                  >
-                    <YoYChart
-                      data={data}
-                      primaryYear={primaryYear}
-                      selectedDepartments={selectedDepartments}
-                    />
-                  </SectionCard>
-                )}
-
-                <DataTable
+                  <DataTable
+                    data={viewData}
+                    selectedYears={primaryYear === "all" ? data.years : [primaryYear]}
+                    selectedDepartments={visibleDepartments}
+                  />
+                </>
+              ) : activeTab === "monthly" ? (
+                <MonthlyAnalysis
                   data={data}
-                  selectedYears={selectedYears}
-                  selectedDepartments={selectedDepartments}
+                  year={matrixYear}
+                  selectedKota={selectedKota}
+                  selectedDept={selectedDept}
+                  visibleDepartments={visibleDepartments}
+                  selectedMonth={selectedMonth}
                 />
-              </>
-            )}
-          </>
-        )}
+              ) : (
+                <BrandAnalysis />
+              )}
 
-        {/* Brand Analysis Tab */}
-        {activeTab === "brand" && <BrandAnalysis />}
-
-        <footer className="pt-2 pb-6 text-center text-xs text-slate-400">
-          Data bersumber dari Google Sheets • dibangun dengan React + Vite +
-          Tailwind + Recharts
-        </footer>
-      </main>
+              <footer
+                className="pt-2 pb-6 text-center text-xs"
+                style={{ color: "var(--text-dim)" }}
+              >
+                <strong style={{ color: "var(--text-muted)" }}>
+                  Pareto Omset
+                </strong>
+                {" · "}Live data dari Google Sheets{" · "}
+                Crafted with React, Vite, Recharts &amp; Tailwind
+              </footer>
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
