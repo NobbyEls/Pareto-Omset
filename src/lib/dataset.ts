@@ -8,7 +8,7 @@ import { parseCSV, type ParsedDataset } from "./csvParser";
  * Deploy Apps Script dari folder /apps-script dan paste URL deployment di sini.
  * Set ke "" untuk disable (hanya pakai Published CSV).
  */
-export const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7ylUHwVMCr-Q6PfxOfEipD5mdXL2Z-ZuCN1vLVFsRLA-S7DQjCAqd1HDuGJ3lZ3W_/exec";
+export const SCRIPT_URL = "";
 
 export const DEFAULT_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXIuWnOk4-NoraIjEfqp0vDZCnKhqiklrskW_rfJxQatuPtohbwKtcz5TDTwuq7DW3HmzXAa_q2RqI/pub?gid=1311218554&single=true&output=csv";
