@@ -76,8 +76,17 @@ function normalizeCategory(raw: string | null | undefined): Category | null {
 
 function normalizeMonth(raw: string | null | undefined): number | null {
   if (!raw) return null;
-  const idx = MONTH_INDEX[raw.trim().toLowerCase()];
-  return idx == null ? null : idx;
+  const trimmed = raw.trim().toLowerCase();
+  // Try exact match first (e.g. "januari")
+  const exact = MONTH_INDEX[trimmed];
+  if (exact != null) return exact;
+  // Try "Januari 2024" format — extract first word as month name
+  const firstWord = trimmed.split(/\s+/)[0];
+  if (firstWord) {
+    const idx = MONTH_INDEX[firstWord];
+    if (idx != null) return idx;
+  }
+  return null;
 }
 
 function normalizeKota(raw: string | null | undefined): KotaCode | null {
