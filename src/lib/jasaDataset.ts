@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { parseIDNumber, MONTHS_ID, MONTH_INDEX, type MonthId } from "./format";
-import { DEFAULT_CSV_URL } from "./dataset";
+import { DEFAULT_CSV_URL, SCRIPT_URL } from "./dataset";
 import type { KotaCode } from "./csvParser";
 import { setDataDate, parseDateDDMMYYYY } from "./estimation";
 
@@ -454,14 +454,34 @@ export function useJasaDataset(): JasaDatasetState {
     const RETRY_DELAY = 3000;
 
     const attempt = () => {
-      const url = `${JASA_CSV_URL}${JASA_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`;
+      const url = SCRIPT_URL
+        ? `${SCRIPT_URL}?type=jasa&_=${Date.now()}`
+        : `${JASA_CSV_URL}${JASA_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`;
 
       // Fetch both Jasa CSV and Jasa Sales from Web App in parallel
       Promise.all([
-        fetch(url, { signal: controller.signal, cache: "no-store" })
+        fetch(url, { signal: controller.signal, cache: "no-store", redirect: "follow" })
           .then((r) => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.text();
+          })
+          .then((text) => {
+            // If Apps Script returned JSON error, fallback to published CSV
+            if (text.startsWith("{")) {
+              const json = JSON.parse(text);
+              if (json.error) throw new Error(json.error);
+            }
+            return text;
+          })
+          .catch((e) => {
+            if ((e as Error).name === "AbortError") throw e;
+            if (SCRIPT_URL) {
+              console.warn("[Jasa] Apps Script failed, falling back to CSV:", (e as Error).message);
+              const csvUrl = `${JASA_CSV_URL}${JASA_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`;
+              return fetch(csvUrl, { signal: controller.signal, cache: "no-store" })
+                .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); });
+            }
+            throw e;
           }),
         fetchJasaSalesFromCsv(controller.signal).catch((e) => {
           console.warn("[Jasa] Failed to fetch Jasa Sales from CSV:", e);
