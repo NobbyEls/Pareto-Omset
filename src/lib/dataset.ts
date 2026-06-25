@@ -1,6 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { parseCSV, type ParsedDataset } from "./csvParser";
 
+/**
+ * Apps Script Web App URL — reads directly from Spreadsheet (always fresh).
+ * Fallback: Published CSV (has Google cache delay).
+ * 
+ * Deploy Apps Script dari folder /apps-script dan paste URL deployment di sini.
+ * Set ke "" untuk disable (hanya pakai Published CSV).
+ */
+export const SCRIPT_URL = "";
+
 export const DEFAULT_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXIuWnOk4-NoraIjEfqp0vDZCnKhqiklrskW_rfJxQatuPtohbwKtcz5TDTwuq7DW3HmzXAa_q2RqI/pub?gid=1311218554&single=true&output=csv";
 
@@ -57,8 +66,31 @@ async function fetchFromCsv(signal: AbortSignal): Promise<FetchResult> {
   return { text, parsed: parseCSV(text) };
 }
 
-/** Single attempt — always CSV (no Web App dependency). */
+/** Fetch from Apps Script Web App (always real-time). */
+async function fetchFromScript(signal: AbortSignal): Promise<FetchResult> {
+  if (!SCRIPT_URL) throw new Error("SCRIPT_URL not configured");
+  const url = `${SCRIPT_URL}?type=omset&_=${Date.now()}`;
+  const res = await fetch(url, { signal, cache: "no-store", redirect: "follow" });
+  if (!res.ok) throw new Error(`Script HTTP ${res.status}`);
+  const text = await res.text();
+  // Check if response is a JSON error
+  if (text.startsWith("{")) {
+    const json = JSON.parse(text);
+    if (json.error) throw new Error(json.error);
+  }
+  return { text, parsed: parseCSV(text) };
+}
+
+/** Single attempt — try Apps Script first, fallback to Published CSV. */
 async function fetchOnce(signal: AbortSignal): Promise<FetchResult> {
+  if (SCRIPT_URL) {
+    try {
+      return await fetchFromScript(signal);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") throw e;
+      console.warn("[Pareto] Apps Script failed, falling back to CSV:", (e as Error).message);
+    }
+  }
   return await fetchFromCsv(signal);
 }
 
