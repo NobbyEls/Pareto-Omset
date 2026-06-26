@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { parseIDNumber, MONTHS_ID, MONTH_INDEX, type MonthId } from "./format";
 import { DEFAULT_CSV_URL } from "./dataset";
 import type { KotaCode } from "./csvParser";
-import { setDataDate, parseDateDDMMYYYY } from "./estimation";
+import { setDataDate, parseDateDDMMYYYY, hasDataDate } from "./estimation";
 
 /**
  * Jasa Breakdown CSV URL (gid=1300836220).
@@ -140,6 +140,32 @@ export function parseJasaSalesFromDatabase(database: string[][]): JasaSalesRecor
 }
 
 /**
+ * Extract the "last data date" from the CSV header cell E1 (column index 4,
+ * format DD/MM/YYYY) and push it into the estimation module via setDataDate().
+ *
+ * Returns `true` when a valid date was found and set. Kept separate from
+ * {@link parseJasaCSV} so callers can set the estimation date the moment the
+ * Jasa CSV text arrives — without waiting for the slower Jasa Sales fetch.
+ */
+function tryExtractDataDate(text: string): boolean {
+  const firstLine =
+    text.split("\n").map((l) => l.trim()).find((l) => l.length > 0) ?? "";
+  const cols = firstLine.split(",");
+  if (cols.length > 4) {
+    const dateStr = cols[4].trim();
+    const parsed = parseDateDDMMYYYY(dateStr);
+    if (parsed) {
+      setDataDate(parsed);
+      console.log(
+        `[Pareto] Tanggal estimasi dari E1: ${dateStr} → ${parsed.toLocaleDateString("id-ID")}`
+      );
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Parse the Jasa Breakdown CSV.
  * Structure:
  *   Col 0: Bulan (month name, or empty for header/separator rows)
@@ -156,20 +182,9 @@ export function parseJasaCSV(text: string, jasaSalesRecords: JasaSalesRecord[] =
   const monthSet = new Set<MonthId>();
 
   // Extract "last data date" from header row cell E1 (column index 4).
-  // Format: DD/MM/YYYY (e.g. "22/06/2026")
-  if (lines.length > 0) {
-    const headerCols = lines[0].split(",");
-    if (headerCols.length > 4) {
-      const dateStr = headerCols[4].trim();
-      const parsed = parseDateDDMMYYYY(dateStr);
-      if (parsed) {
-        setDataDate(parsed);
-        console.log(
-          `[Pareto] Tanggal estimasi dari E1: ${dateStr} → ${parsed.toLocaleDateString("id-ID")}`
-        );
-      }
-    }
-  }
+  // Format: DD/MM/YYYY (e.g. "22/06/2026"). Idempotent — may already have been
+  // set earlier (right after the CSV text arrived) to speed up estimation.
+  tryExtractDataDate(text);
 
   for (const line of lines) {
     // Simple CSV split (no quoted commas in this dataset)
@@ -387,6 +402,12 @@ export interface JasaDatasetState {
   loading: boolean;
   error: string | null;
   fromCache: boolean;
+  /**
+   * Flips to true the moment a valid estimation date (E1) has been parsed —
+   * independent of whether the full Jasa records have finished loading. Used
+   * to trigger estimation as early as possible.
+   */
+  dateReady: boolean;
   updateData: () => void;
 }
 
@@ -435,6 +456,7 @@ export function useJasaDataset(): JasaDatasetState {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
+  const [dateReady, setDateReady] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
 
   const updateData = useCallback(() => setForceUpdate((t) => t + 1), []);
@@ -456,13 +478,28 @@ export function useJasaDataset(): JasaDatasetState {
     const attempt = () => {
       const url = `${JASA_CSV_URL}${JASA_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`;
 
+      // Fetch the Jasa CSV. As soon as its text arrives, extract the E1
+      // estimation date and flip `dateReady` — this lets estimation kick in
+      // immediately, without waiting for the (slower) Jasa Sales fetch below
+      // or any record-level retries.
+      const jasaTextPromise = fetch(url, {
+        signal: controller.signal,
+        cache: "no-store",
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text();
+        })
+        .then((text) => {
+          if (tryExtractDataDate(text)) {
+            setDateReady(true);
+          }
+          return text;
+        });
+
       // Fetch both Jasa CSV and Jasa Sales from Web App in parallel
       Promise.all([
-        fetch(url, { signal: controller.signal, cache: "no-store" })
-          .then((r) => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.text();
-          }),
+        jasaTextPromise,
         fetchJasaSalesFromCsv(controller.signal).catch((e) => {
           console.warn("[Jasa] Failed to fetch Jasa Sales from CSV:", e);
           return [] as JasaSalesRecord[];
@@ -471,10 +508,15 @@ export function useJasaDataset(): JasaDatasetState {
         .then(([text, jasaSalesRecords]) => {
           const parsed = parseJasaCSV(text, jasaSalesRecords);
 
-          if (parsed.records.length === 0 && retryCount < MAX_RETRIES) {
+          // Retry while we still lack records OR a valid estimation date.
+          if (
+            (parsed.records.length === 0 || !hasDataDate()) &&
+            retryCount < MAX_RETRIES
+          ) {
             retryCount++;
             console.warn(
-              `[Jasa] No data parsed, retrying in ${RETRY_DELAY / 1000}s ` +
+              `[Jasa] Incomplete data (records=${parsed.records.length}, ` +
+                `date=${hasDataDate()}), retrying in ${RETRY_DELAY / 1000}s ` +
                 `(attempt ${retryCount}/${MAX_RETRIES})...`
             );
             setTimeout(attempt, RETRY_DELAY);
@@ -507,5 +549,5 @@ export function useJasaDataset(): JasaDatasetState {
     return () => controller.abort();
   }, [forceUpdate]);
 
-  return { data, loading, error, fromCache, updateData };
+  return { data, loading, error, fromCache, dateReady, updateData };
 }

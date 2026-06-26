@@ -38,10 +38,13 @@ export default function App() {
   // possible -- before estimation-dependent components first render.
   const jasaState = useJasaDataset();
 
-  // When jasaState.data transitions from null to non-null, parseJasaCSV has
-  // run and setDataDate() was called. Components that use estimateValue() need
-  // to re-run their memos. This key flips 0->1 to invalidate those memos.
-  const estimationKey = jasaState.data ? 1 : 0;
+  // Estimation visibility is driven by two milestones, whichever arrives:
+  //  1. dateReady — the E1 estimation date has been parsed (fast path), and
+  //  2. data       — the full Jasa dataset finished loading.
+  // estimationKey changes whenever either flips, forcing estimation-dependent
+  // memos to recompute as early as possible instead of waiting for records.
+  const estimationKey =
+    (jasaState.dateReady ? 1 : 0) + (jasaState.data ? 1 : 0);
 
   const [primaryYear, setPrimaryYear] = useState<YearFilter>("all");
   const [selectedKota, setSelectedKota] = useState<KotaFilter>("all");
