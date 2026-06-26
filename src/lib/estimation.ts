@@ -42,6 +42,11 @@ function getReferenceDate(): Date | null {
   return _dataDate;
 }
 
+/** True once a reference date has been set (from the Jasa CSV E1 header). */
+export function hasDataDate(): boolean {
+  return _dataDate !== null;
+}
+
 /**
  * Checks if the given year + monthIdx (0-indexed) matches the reference date's
  * year and month. Returns false if reference date is not yet set.

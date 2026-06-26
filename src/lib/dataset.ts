@@ -63,9 +63,25 @@ async function fetchOnce(signal: AbortSignal): Promise<FetchResult> {
 }
 
 /**
- * Aggressive fetch: retry up to MAX_RETRIES until we get data with at least
- * MIN_VALID_YEARS years. Returns the BEST attempt seen (most years) when
- * exhausted.
+ * A parsed result is "complete" when it has at least MIN_VALID_YEARS year
+ * blocks AND the most recent year block actually contains records.
+ *
+ * `parsed.years` is derived from the CSV *header* (year columns), so a year
+ * like 2026 is reported even while its cells are still showing the Google
+ * Sheets "Loading..." transient. In that state the year exists but has zero
+ * records — accepting it would surface an empty 2026. We therefore require
+ * the latest year to be populated before treating a fetch as complete.
+ */
+function isResultComplete(parsed: ParsedDataset): boolean {
+  if (parsed.years.length < MIN_VALID_YEARS) return false;
+  const latestYear = parsed.years[parsed.years.length - 1];
+  return parsed.records.some((r) => r.year === latestYear);
+}
+
+/**
+ * Aggressive fetch: retry up to MAX_RETRIES until we get a *complete* result
+ * (see {@link isResultComplete}). Returns the BEST attempt seen (most records)
+ * when exhausted.
  */
 async function aggressiveFetch(
   signal: AbortSignal,
@@ -78,19 +94,23 @@ async function aggressiveFetch(
     onAttempt?.(attempt, MAX_RETRIES);
     try {
       const result = await fetchOnce(signal);
-      if (result.parsed.years.length >= MIN_VALID_YEARS) {
-        return result; // good enough
+      if (isResultComplete(result.parsed)) {
+        return result; // good enough — latest year is populated
       }
-      // Track the best (most years) result so far.
+      // Track the best (most records) result so far. We compare on record
+      // count because `years.length` is constant once the header is read.
       if (
         !best ||
-        result.parsed.years.length > best.parsed.years.length ||
         result.parsed.records.length > best.parsed.records.length
       ) {
         best = result;
       }
+      const latestYear =
+        result.parsed.years[result.parsed.years.length - 1] ?? "?";
       console.warn(
-        `[Pareto] Attempt ${attempt}/${MAX_RETRIES}: only ${result.parsed.years.length} year(s), retrying...`
+        `[Pareto] Attempt ${attempt}/${MAX_RETRIES}: latest year ${latestYear} not ` +
+          `populated yet (${result.parsed.years.length} year block(s), ` +
+          `${result.parsed.records.length} records), retrying...`
       );
     } catch (e) {
       if ((e as Error).name === "AbortError") throw e;
@@ -129,10 +149,15 @@ export function useDataset(): DatasetState {
     aggressiveFetch(controller.signal)
       .then(({ text, parsed }) => {
         // Only persist & swap if this is "better" than what we already have.
-        const currentYears = dataRef.current?.years.length ?? 0;
+        // We compare on record count (and completeness) rather than year count
+        // because the year list is header-derived and effectively constant.
+        const current = dataRef.current;
+        const currentComplete = current ? isResultComplete(current) : false;
+        const newComplete = isResultComplete(parsed);
         const isBetter =
-          parsed.years.length > currentYears ||
-          (parsed.years.length === currentYears && parsed.records.length > 0);
+          !current ||
+          (newComplete && !currentComplete) ||
+          parsed.records.length > current.records.length;
 
         if (isBetter && parsed.records.length > 0) {
           if (parsed.years.length >= MIN_VALID_YEARS) {
