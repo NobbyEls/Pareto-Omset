@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { parseIDNumber, MONTHS_ID, MONTH_INDEX, type MonthId } from "./format";
 import { DEFAULT_CSV_URL } from "./dataset";
+import Papa from "papaparse";
 import type { KotaCode } from "./csvParser";
 import { setDataDate, parseDateDDMMYYYY } from "./estimation";
 
@@ -409,8 +410,8 @@ function saveJasaSalesCache(records: JasaSalesRecord[]): void {
 
 /**
  * Fetch main database CSV and extract Jasa Sales records.
- * Reads the same published CSV as useDataset, parses it into a 2D array,
- * then passes to parseJasaSalesFromDatabase.
+ * Reads the same published CSV as useDataset, parses it with Papa Parse
+ * (handles quoted fields with commas), then passes to parseJasaSalesFromDatabase.
  */
 async function fetchJasaSalesFromCsv(signal: AbortSignal): Promise<JasaSalesRecord[]> {
   const url = `${DEFAULT_CSV_URL}${DEFAULT_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`;
@@ -418,10 +419,9 @@ async function fetchJasaSalesFromCsv(signal: AbortSignal): Promise<JasaSalesReco
   if (!res.ok) return [];
   const text = await res.text();
 
-  // Convert CSV text to 2D array (simple split — same as csvParser does)
-  const database = text
-    .split("\n")
-    .map((line) => line.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim()));
+  // Use Papa Parse to properly handle quoted fields (e.g. "5.815.000,00")
+  const parsed = Papa.parse<string[]>(text, { skipEmptyLines: false });
+  const database = (parsed.data || []) as string[][];
 
   return parseJasaSalesFromDatabase(database);
 }
