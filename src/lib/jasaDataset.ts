@@ -115,8 +115,13 @@ export function parseJasaSalesFromDatabase(database: string[][]): JasaSalesRecor
       // Must be exactly "JASA" (not "JASA SERVICE")
       if (deptRaw !== "JASA") continue;
 
-      // Validate month
-      const monthIndex = MONTH_INDEX[bulanRaw.toLowerCase()];
+      // Validate month — handle both "Januari" and "Januari 2024" formats
+      const bulanLower = bulanRaw.toLowerCase();
+      let monthIndex = MONTH_INDEX[bulanLower];
+      if (monthIndex == null) {
+        const firstWord = bulanLower.split(/\s+/)[0];
+        monthIndex = firstWord ? MONTH_INDEX[firstWord] : undefined;
+      }
       if (monthIndex == null) continue;
 
       // Map kota code to name
